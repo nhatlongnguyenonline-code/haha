@@ -39,18 +39,23 @@ st.markdown("""
 
     /* KHUNG TIN NHẮN CHAT */
     [data-testid="stChatMessage"] { border-radius: 16px !important; margin-bottom: 16px !important; padding: 16px 20px !important; }
-    [data-testid="stChatMessageAssistant"] { background-color: #F8FAFC !important; border: 1px solid #E2E8F0 !important; }
     
-    /* Ép khung tròn chuẩn hóa cho Avatar Phượng Hoàng và chống lỗi lưu trữ file */
+    /* 🔴 THAY AVATAR PHƯỢNG HOÀNG BẰNG CSS NGẦM CHO AI TRỢ LÝ (SỬA LỖI MEDIA 100%) */
+    [data-testid="stChatMessageAssistant"] { background-color: #F8FAFC !important; border: 1px solid #E2E8F0 !important; }
     [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"] {
         border-radius: 50% !important; overflow: hidden !important; border: 1.5px solid #EF4444 !important; box-shadow: 0 0 8px rgba(239, 68, 68, 0.2) !important;
         background-image: url("https://freepik.com") !important;
-        background-size: cover !important;
-        background-position: center !important;
+        background-size: cover !important; background-position: center !important;
+        color: transparent !important; /* Giấu icon mặc định cũ */
     }
+    
+    /* 🔵 THAY AVATAR GRADIENT CHO NGƯỜI DÙNG BẰNG CSS NGẦM */
     [data-testid="stChatMessageUser"] { background-color: #F0F6FF !important; border: 1px solid #DBEAFE !important; }
-    [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"] { background: linear-gradient(135deg, #3B82F6, #1D4ED8) !important; color: white !important; font-weight: bold !important; border-radius: 50% !important; }
-
+    [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"] { 
+        background: linear-gradient(135deg, #3B82F6, #1D4ED8) !important; 
+        color: white !important; font-weight: bold !important; border-radius: 50% !important; 
+    }
+    
     .main-title { font-size: 2.2rem; font-weight: 800; color: #1E3A8A !important; text-align: center; margin-top: 1.5rem; margin-bottom: 4px; }
     .sub-title { text-align: center; color: #64748B !important; font-size: 0.95rem; margin-bottom: 1.5rem; }
     </style>
@@ -115,15 +120,14 @@ with st.sidebar:
             st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
             st.rerun()
 
-# Nhúng ký tự nhận diện để kích hoạt CSS vẽ đè ảnh đại diện Phượng Hoàng an toàn không lỗi lưu trữ
+# Gọi lệnh thuần túy không chứa tham số avatar để triệt tiêu lỗi FileNotFoundError vĩnh viễn
 for message in st.session_state.messages:
-    avt = "ME" if message["role"] == "user" else "🤖"
-    with st.chat_message(message["role"], avatar=avt): 
+    with st.chat_message(message["role"]): 
         st.markdown(message["content"])
 
 if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user", avatar="ME"): st.markdown(user_input)
+    with st.chat_message("user"): st.markdown(user_input)
 
     cau_hoi_clean = user_input.lower().strip()
     keywords = ["ở đâu", "thành phố", "giá", "thời tiết", "mấy độ", "bao nhiêu", "hôm nay", "tin tức", "ai là", "sự kiện", "trường thcs", "là gì", "dịch", "nghĩa là gì"]
@@ -145,7 +149,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
 
     prompt_payload = f"[HỆ THỐNG]: Dựa trên Internet: {combined_context}\nCÂU HỎI: {user_input}" if combined_context else user_input
 
-    with st.chat_message("assistant", avatar="🤖"):
+    with st.chat_message("assistant"):
         message_placeholder = st.empty()
         with st.spinner("🤖 AI đang suy nghĩ..."):
             try:
