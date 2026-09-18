@@ -12,9 +12,9 @@ import streamlit as st
 
 warnings.filterwarnings("ignore")
 
-# 🌐 ĐƯỜNG LINK ẢNH PHƯỢNG HOÀNG ĐỎ - XANH DƯƠNG HÌNH TRÒN PREMIUM
-PHOENIX_AVATAR = "https://freepik.com"
-USER_AVATAR = "https://freepik.com"
+# 🎨 CHUỖI MÃ HÓA BASE64 ĐỘC LẬP - BIẾN ẢNH THÀNH CHỮ CHỐNG LỖI GÃY LINK 100%
+PHOENIX_BASE64 = "data:image/svg+xml;utf8,<svg xmlns='http://w3.org' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%231E3A8A'/><path d='M30,70 Q50,20 70,70 Q50,45 30,70' fill='%23EF4444'/><path d='M40,65 Q50,35 60,65 Q50,50 40,65' fill='%233B82F6'/><circle cx='43' cy='45' r='3' fill='white'/><circle cx='57' cy='45' r='3' fill='white'/></svg>"
+USER_BASE64 = "data:image/svg+xml;utf8,<svg xmlns='http://w3.org' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%232563EB'/><circle cx='50' cy='40' r='18' fill='white'/><path d='M20,80 Q50,50 80,80 Z' fill='white'/></svg>"
 
 #--- 1. CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE KHÓA CHÍNH GIỮA ---
 st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🤖", layout="centered")
@@ -46,7 +46,7 @@ st.markdown("""
     [data-testid="stChatMessageAssistant"] { background-color: #F8FAFC !important; border: 1px solid #E2E8F0 !important; }
     [data-testid="stChatMessageUser"] { background-color: #F0F6FF !important; border: 1px solid #DBEAFE !important; }
     
-    /* ÉP TRÒN CHO TẤT CẢ AVATAR */
+    /* ÉP TRÒN CHO TẤT CẢ AVATAR CHỐNG LỖI */
     [data-testid="stChatMessageAvatar"] img {
         border-radius: 50% !important;
         object-fit: cover !important;
@@ -116,16 +116,16 @@ with st.sidebar:
             st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
             st.rerun()
 
-# Truyền trực tiếp hằng số đường dẫn ảnh vào hàm sinh tin nhắn hội thoại cũ
+# Nạp chuỗi text Base64 vào các tin nhắn cũ
 for message in st.session_state.messages:
-    avt_source = USER_AVATAR if message["role"] == "user" else PHOENIX_AVATAR
+    avt_source = USER_BASE64 if message["role"] == "user" else PHOENIX_BASE64
     with st.chat_message(message["role"], avatar=avt_source): 
         st.markdown(message["content"])
 
-# Khung nhận câu hỏi mới
+# Khung gõ nhận câu hỏi mới
 if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user", avatar=USER_AVATAR): 
+    with st.chat_message("user", avatar=USER_BASE64): 
         st.markdown(user_input)
 
     cau_hoi_clean = user_input.lower().strip()
@@ -148,7 +148,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
 
     prompt_payload = f"[HỆ THỐNG]: Dựa trên Internet: {combined_context}\nCÂU HỎI: {user_input}" if combined_context else user_input
 
-    with st.chat_message("assistant", avatar=PHOENIX_AVATAR):
+    with st.chat_message("assistant", avatar=PHOENIX_BASE64):
         message_placeholder = st.empty()
         with st.spinner("🤖 AI đang suy nghĩ..."):
             try:
