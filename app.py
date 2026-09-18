@@ -12,47 +12,64 @@ import streamlit as st
 
 warnings.filterwarnings("ignore")
 
-#--- 1. CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE KHÓA CHÍNH GIỮA ---
+#--- CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE KHÓA CHÍNH GIỮA ---
 st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🐦‍🔥", layout="centered")
 
 st.markdown("""
     <style>
-    /* 🎨 TRANG TRÍ HAI DẢI VIỀN XANH ĐỎ CHẠY DỌC ĐỐI XỨNG Ở HAI BÊN MÀN HÌNH */
+    /* 🎨 NGHỆ THUẬT PHOENIX: TRANG TRÍ ĐỒ HỌA 2 SỌC KÉP CHẠY DỌC ĐỐI XỨNG HAI BÊN */
     .stApp::before {
         content: "" !important;
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
-        width: 8px !important; /* Độ rộng của thanh bên trái */
+        width: 14px !important;
         height: 100vh !important;
-        background: linear-gradient(180deg, #EF4444, #3B82F6) !important; /* Đỏ sang Xanh dương */
+        /* Sọc kép trái: Đỏ lửa chủ đạo phối Xanh dương công nghệ song song */
+        background: repeating-linear-gradient(90deg, #EF4444 0px, #EF4444 6px, #FFFFFF 6px, #FFFFFF 8px, #3B82F6 8px, #3B82F6 14px) !important;
         z-index: 9999 !important;
-        box-shadow: 2px 0 10px rgba(239, 68, 68, 0.2) !important;
+        box-shadow: 3px 0 12px rgba(239, 68, 68, 0.15) !important;
     }
     .stApp::after {
         content: "" !important;
         position: fixed !important;
         top: 0 !important;
         right: 0 !important;
-        width: 8px !important; /* Độ rộng của thanh bên phải */
+        width: 14px !important;
         height: 100vh !important;
-        background: linear-gradient(180deg, #3B82F6, #EF4444) !important; /* Xanh dương sang Đỏ ngược lại */
+        /* Sọc kép phải: Xanh dương phối Đỏ lửa đối xứng ngược chiều nghệ thuật */
+        background: repeating-linear-gradient(90deg, #3B82F6 0px, #3B82F6 6px, #FFFFFF 6px, #FFFFFF 8px, #EF4444 8px, #EF4444 14px) !important;
         z-index: 9999 !important;
-        box-shadow: -2px 0 10px rgba(59, 130, 246, 0.2) !important;
+        box-shadow: -3px 0 12px rgba(59, 130, 246, 0.15) !important;
     }
 
-    /* Ẩn hoàn toàn icon robot đen mặc định bên cạnh tiêu đề chính */
-    [data-testid="stHeaderHeading"] svg, 
-    [data-testid="stHeaderHeading"] div,
-    [data-testid="stElementContainer"] h1 svg {
-        display: none !important;
+    /* 🎨 NGHỆ THUẬT PHOENIX: TRANG TRÍ CHỖ TRỐNG MÀU SẮC NHẸ NHÀNG */
+    /* Bo góc và đổ màu nền vàng cam pastel cực dịu cho các vùng trống của thanh Sidebar */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #F8FAFC 0%, #FFF7ED 100%) !important;
+        border-right: 1px solid #FED7AA !important;
     }
-    .stApp { background-color: #FFFFFF !important; color: #1F2937 !important; }
-    h2, h3, p, span, label, .stMarkdown { color: #1F2937 !important; }
-    [data-testid="stSidebar"] { background-color: #F8FAFC !important; border-right: 1px solid #E2E8F0 !important; }
-    [data-testid="stSidebar"] * { color: #1F2937 !important; }
+    
+    /* Tô điểm nhẹ nhàng cho khung bong bóng hội thoại chat */
+    [data-testid="stChatMessage"] {
+        border-radius: 18px !important;
+        margin-bottom: 16px !important;
+        padding: 16px 20px !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important;
+        transition: all 0.3s ease !important;
+    }
+    /* Khung chat Trợ Lý AI: Nền xám tro pha hồng cam Phoenix nhạt siêu tinh tế */
+    [data-testid="stChatMessageAssistant"] {
+        background-color: #FFFDFA !important;
+        border: 1px solid #FFE4E6 !important;
+    }
+    /* Khung chat Bạn gõ: Nền xanh dương pastel hoàng gia thanh lịch */
+    [data-testid="stChatMessageUser"] {
+        background-color: #F0F6FF !important;
+        border: 1px solid #DBEAFE !important;
+    }
 
-    /* KHÓA Ô GÕ CÂU HỎI CHÍNH GIỮA MÀN HÌNH */
+    /* KHÓA CHẶT Ô GÕ CÂU HỎI NHỎ GỌN Ở CHÍNH GIỮA MÀN HÌNH */
     .stChatInput {
         position: fixed !important; bottom: 30px !important; left: 50% !important;
         transform: translateX(-50%) !important; z-index: 999 !important;
@@ -62,17 +79,19 @@ st.markdown("""
     .stChatInput [data-testid="stChatInputCurrentContainer"] {
         width: 100% !important; border: 2px solid #3B82F6 !important;
         border-radius: 24px !important; background-color: #F8FAFC !important;
-        padding: 4px 10px !important; box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.15) !important;
+        padding: 4px 10px !important;
+        box-shadow: 0 10px 30px -5px rgba(59, 130, 246, 0.2) !important;
     }
     .stChatInput textarea { color: #1F2937 !important; font-size: 0.95rem !important; font-weight: 500 !important; }
     .stChatInput button { background-color: #3B82F6 !important; color: white !important; border-radius: 50% !important; }
-
-    /* KHUNG TIN NHẮN CHAT */
-    [data-testid="stChatMessage"] { border-radius: 16px !important; margin-bottom: 16px !important; padding: 16px 20px !important; }
-    [data-testid="stChatMessageAssistant"] { background-color: #F8FAFC !important; border: 1px solid #E2E8F0 !important; }
-    [data-testid="stChatMessageUser"] { background-color: #F0F6FF !important; border: 1px solid #DBEAFE !important; }
+    
+    /* Ẩn icon mặc định thô sơ hệ thống */
+    [data-testid="stHeaderHeading"] svg, [data-testid="stHeaderHeading"] div, [data-testid="stElementContainer"] h1 svg {
+        display: none !important;
+    }
     [data-testid="stChatMessageAvatar"] { border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.2rem !important; }
 
+    /* TIÊU ĐỀ CHUYỂN MÀU GRADIENT PHOENIX */
     .premium-title-container { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 1.5rem; margin-bottom: 4px; }
     .premium-logo { font-size: 2.5rem; }
     .premium-text { font-size: 2.3rem; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(90deg, #EF4444, #3B82F6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
@@ -94,7 +113,6 @@ if "ai_client" not in st.session_state:
         st.session_state.ai_client = genai.Client(api_key=API_KEY)
     except Exception as e:
         st.error(f"Lỗi khởi tạo bộ não AI: {e}")
-
 def search_the_web_ddg(query, max_results=1):
     urls = []
     try:
@@ -199,4 +217,4 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                 st.session_state.messages.append({"role": "assistant", "content": ai_response})
                 st.rerun()
             else:
-                message_placeholder.markdown("❌ Máy chủ Google Gemini hiện đang bận hoặc quá tải. Bạn vui lòng thử lại sau vài giây nhé!")
+                message_placeholder.markdown("❌ Máy chủ Google Gemini hiện đang quá tải. Bạn vui lòng thử lại sau vài giây nhé!")
