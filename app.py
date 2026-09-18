@@ -17,33 +17,46 @@ st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🐦‍🔥
 
 st.markdown("""
     <style>
-    /* 🪵 NGHỆ THUẬT MỘC: TRANG TRÍ MỘT DẢI THANH GỖ MỘC SANG TRỌNG CHẠY NGANG ĐẦU TRANG */
+    /* 🪵 NGHỆ THUẬT MỘC: TRANG TRÍ MỘT DẢI THANH GỖ MỘC CHẠY NGANG ĐẦU TRANG */
     .stApp::before {
         content: "" !important;
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
         width: 100% !important;
-        height: 12px !important; /* Độ dày dải mộc đầu trang */
-        /* Màu nâu gỗ sồi sang trọng kết hợp các vân sáng nhạt tinh tế */
-        background: linear-gradient(90deg, #8B5A2B 0%, #A0522D 50%, #8B5A2B 100%) !important;
+        height: 14px !important; /* Độ dày dải mộc đầu trang */
+        background: linear-gradient(90deg, #8B5A2B 0%, #A0522D 50%, #8B5A2B 100%) !important; /* Tông nâu sồi mộc mạc */
         z-index: 10000 !important;
-        box-shadow: 0 3px 10px rgba(139, 90, 43, 0.3) !important;
+        box-shadow: 0 4px 12px rgba(139, 90, 43, 0.35) !important;
     }
 
-    /* 🎨 NGHỆ THUẬT PHOENIX: TRANG TRÍ ĐỒ HỌA 2 SỌC KÉP CHẠY DỌC HAI BÊN RÌA */
-    body {
-        border-left: 12px solid transparent !important;
-        border-right: 12px solid transparent !important;
+    /* 🎨 NGHỆ THUẬT PHOENIX: TRANG TRÍ ĐỒ HỌA 2 SỌC KÉP CHẠY DỌC HAI BÊN MÉP CHUẨN XÁC */
+    [data-testid="stAppViewContainer"]::before {
+        content: "" !important;
+        position: fixed !important;
+        top: 14px !important;
+        left: 0 !important;
+        width: 10px !important;
+        height: 100vh !important;
+        background: repeating-linear-gradient(90deg, #EF4444 0px, #EF4444 4px, #FFFFFF 4px, #FFFFFF 6px, #3B82F6 6px, #3B82F6 10px) !important;
+        z-index: 9999 !important;
     }
-    html {
-        background: 
-            repeating-linear-gradient(90deg, #EF4444 0px, #EF4444 4px, #FFFFFF 4px, #FFFFFF 6px, #3B82F6 6px, #3B82F6 10px) 0 0 no-repeat,
-            repeating-linear-gradient(90deg, #3B82F6 0px, #3B82F6 4px, #FFFFFF 4px, #FFFFFF 6px, #EF4444 6px, #EF4444 10px) 100% 0 no-repeat !important;
-        background-size: 10px 100% !important;
+    [data-testid="stAppViewContainer"]::after {
+        content: "" !important;
+        position: fixed !important;
+        top: 14px !important;
+        right: 0 !important;
+        width: 10px !important;
+        height: 100vh !important;
+        background: repeating-linear-gradient(90deg, #3B82F6 0px, #3B82F6 4px, #FFFFFF 4px, #FFFFFF 6px, #EF4444 6px, #EF4444 10px) !important;
+        z-index: 9999 !important;
     }
 
-    /* 🎨 TRANG TRÍ CHỖ TRỐNG SIDEBAR MÀU SẮC NHẸ NHÀNG */
+    /* ĐỊNH DẠNG NỀN TRẮNG CHỮ ĐEN DỄ NHÌN */
+    .stApp { background-color: #FFFFFF !important; color: #1F2937 !important; }
+    h2, h3, p, span, label, .stMarkdown { color: #1F2937 !important; }
+    
+    /* TRANG TRÍ CHỖ TRỐNG SIDEBAR MÀU CAM VÀNG PASTEL DỊU MẮT */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #F8FAFC 0%, #FFF7ED 100%) !important;
         border-right: 1px solid #FED7AA !important;
@@ -56,14 +69,8 @@ st.markdown("""
         padding: 16px 20px !important;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important;
     }
-    [data-testid="stChatMessageAssistant"] {
-        background-color: #FFFDFA !important;
-        border: 1px solid #FFE4E6 !important;
-    }
-    [data-testid="stChatMessageUser"] {
-        background-color: #F0F6FF !important;
-        border: 1px solid #DBEAFE !important;
-    }
+    [data-testid="stChatMessageAssistant"] { background-color: #FFFDFA !important; border: 1px solid #FFE4E6 !important; }
+    [data-testid="stChatMessageUser"] { background-color: #F0F6FF !important; border: 1px solid #DBEAFE !important; }
 
     /* KHÓA CHẶT Ô GÕ CÂU HỎI NHỎ GỌN Ở CHÍNH GIỮA MÀN HÌNH */
     .stChatInput {
@@ -81,9 +88,7 @@ st.markdown("""
     .stChatInput textarea { color: #1F2937 !important; font-size: 0.95rem !important; font-weight: 500 !important; }
     .stChatInput button { background-color: #3B82F6 !important; color: white !important; border-radius: 50% !important; }
     
-    [data-testid="stHeaderHeading"] svg, [data-testid="stHeaderHeading"] div, [data-testid="stElementContainer"] h1 svg {
-        display: none !important;
-    }
+    [data-testid="stHeaderHeading"] svg, [data-testid="stHeaderHeading"] div, [data-testid="stElementContainer"] h1 svg { display: none !important; }
     [data-testid="stChatMessageAvatar"] { border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.2rem !important; }
 
     /* TIÊU ĐỀ CHUYỂN MÀU GRADIENT PHOENIX */
