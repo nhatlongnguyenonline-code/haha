@@ -167,9 +167,9 @@ with st.sidebar:
             st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
             st.rerun()
 
-# Nạp biểu tượng Emoji hệ thống bất tử chống gãy hình cho tin nhắn cũ
+# Đổi sang emoji Phượng hoàng lửa tái sinh (🐦‍🔥) cho tin nhắn cũ
 for message in st.session_state.messages:
-    avt_emoji = "👤" if message["role"] == "user" else "🦅"
+    avt_emoji = "👤" if message["role"] == "user" else "🐦‍🔥"
     with st.chat_message(message["role"], avatar=avt_emoji): 
         st.markdown(message["content"])
 
@@ -199,7 +199,8 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
 
     prompt_payload = f"[HỆ THỐNG]: Dựa trên Internet: {combined_context}\nCÂU HỎI: {user_input}" if combined_context else user_input
 
-    with st.chat_message("assistant", avatar="🦅"):
+    # Đổi sang emoji Phượng hoàng lửa tái sinh (🐦‍🔥) cho câu trả lời mới tinh
+    with st.chat_message("assistant", avatar="🐦‍🔥"):
         message_placeholder = st.empty()
         with st.spinner("🤖 AI đang suy nghĩ..."):
             try:
