@@ -134,12 +134,12 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
     with st.chat_message("assistant", avatar="🔮"):
         message_placeholder = st.empty()
         
-        # Danh sách các mô hình hoạt động tốt nhất hiện tại của Groq để quét dự phòng chống lỗi 404
+        # Cập nhật danh sách mô hình miễn phí chuẩn xác nhất hiện tại của Groq
         available_models = [
-            "llama-3.3-70b-specdec",
-            "llama-3.2-11b-vision-preview",
+            "llama3-70b-8192",
+            "llama3-8b-8192",
             "gemma2-9b-it",
-            "llama3-8b-8192"
+            "llama-3.3-70b-specdec"
         ]
         
         ai_response = ""
@@ -152,12 +152,11 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
                     temperature=creativity,
                 )
                 ai_response = completion.choices.message.content.strip()
-                break # Nếu thành công thì ngắt vòng lặp ngay
+                break
             except Exception as model_error:
-                continue # Nếu mô hình bị 404 hoặc bận, tự động nhảy sang mô hình tiếp theo trong danh sách
+                continue
                 
         if ai_response:
-            # Gắn link nguồn bài báo vào cuối văn bản trả về nếu có tìm kiếm mạng
             if sources:
                 ai_response += "\n\n---\n🌐 **Nguồn liên kết tra cứu:**\n" + "\n".join([f"- {src}" for src in sources])
             
@@ -170,4 +169,4 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
             message_placeholder.markdown(full_response)
             st.session_state.messages.append({"role": "assistant", "content": full_response})
         else:
-            message_placeholder.markdown("❌ Máy chủ Groq hiện tại đang bảo trì tất cả các dòng mô hình miễn phí hoặc API Key bị cấu hình sai. Bạn vui lòng kiểm tra lại Key trong mục Secrets nhé!")
+            message_placeholder.markdown("❌ Máy chủ Groq hiện tại đang bảo trì tất cả các dòng mô hình miễn phí hoặc API Key bị cấu hình sai. Bạn vui lòng vào lại trang Settings -> Secrets trên Streamlit Cloud và kiểm tra xem đã điền chính xác biến tên là `GROQ_API_KEY` chưa nhé!")
