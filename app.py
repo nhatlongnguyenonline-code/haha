@@ -13,7 +13,7 @@ import streamlit as st
 warnings.filterwarnings("ignore")
 
 #--- 1. CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE HỖ TRỢ GỬI ẢNH ---
-st.set_page_config(page_title="Trợ Lý AI Toàn Năng", page_icon="🤖", layout="centered")
+st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🤖", layout="centered")
 
 # Nhúng mã CSS khóa chặt ô gõ câu hỏi nhỏ gọn ở chính giữa màn hình và làm đẹp giao diện
 st.markdown("""
@@ -148,7 +148,6 @@ with st.sidebar:
     uploaded_file = st.file_uploader("Tải ảnh lên tại đây (.png, .jpg, .jpeg)...", type=["png", "jpg", "jpeg"])
     
     if uploaded_file:
-        # Hiển thị ảnh thu nhỏ xem trước (Preview) ở thanh bên
         image_preview = Image.open(uploaded_file)
         st.image(image_preview, caption="Ảnh bạn đã chọn", use_container_width=True)
         st.info("💡 Bây giờ bạn hãy gõ câu hỏi vào ô chat chính để yêu cầu AI phân tích bức ảnh này nhé!")
@@ -174,12 +173,10 @@ for message in st.session_state.messages:
 
 #--- 4. KHUNG NHẬP LIỆU VÀ XỬ LÝ LOGIC ---
 if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
-    # Hiển thị câu hỏi của bạn
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user", avatar="👤"): 
         st.markdown(user_input)
 
-    # Phân loại câu hỏi tra mạng internet diện rộng
     cau_hoi_clean = user_input.lower().strip()
     keywords = ["ở đâu", "thành phố", "giá", "thời tiết", "mấy độ", "bao nhiêu", "hôm nay", "tin tức", "ai là", "sự kiện", "trường thcs", "là gì", "dịch", "nghĩa là gì"]
     need_web = any(word in cau_hoi_clean for word in keywords)
@@ -187,7 +184,6 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
     combined_context = ""
     sources = []
     
-    # Chỉ tra cứu mạng khi người dùng không gửi kèm hình ảnh phân tích
     if need_web and not uploaded_file:
         with st.status("🔍 Đang kết nối mạng và tìm kiếm thông tin thực tế...", expanded=False) as status:
             web_links = search_the_web_ddg(user_input)
@@ -199,7 +195,6 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                         sources.append(link)
                 status.update(label=" Đọc dữ liệu mạng thành công!", state="complete")
 
-    # Đóng gói Prompt xử lý
     if combined_context:
         prompt_payload = f"""
         [HỆ THỐNG]: Dưới đây là thông tin thực tế từ Internet. Hãy đọc hiểu và trả lời cụ thể câu hỏi của người dùng bằng tiếng Việt.
@@ -213,17 +208,13 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
         message_placeholder = st.empty()
         with st.spinner("🤖 AI đang suy nghĩ câu trả lời..."):
             try:
-                # --- NẾU NGƯỜI DÙNG CÓ GỬI KÈM ẢNH ---
                 if uploaded_file:
                     raw_image = Image.open(uploaded_file)
-                    
-                    # Gọi mô hình thông qua API sinh nội dung đa phương tiện trực tiếp
                     response = st.session_state.ai_client.models.generate_content(
                         model='gemini-3.6-flash',
                         contents=[raw_image, prompt_payload],
                         config=types.GenerateContentConfig(temperature=creativity)
                     )
-                # --- NẾU LÀ CHAT VĂN BẢN THƯỜNG (Giữ nguyên bộ nhớ phiên hội thoại) ---
                 else:
                     response = st.session_state.chat_session.send_message(
                         prompt_payload,
@@ -231,11 +222,9 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                     )
                 
                 ai_response = response.text.strip()
-                
                 if sources:
                     ai_response += "\n\n---\n🌐 **Nguồn liên kết tra cứu:**\n" + "\n".join([f"- {src}" for src in sources])
                 
-                # Hiệu ứng chạy chữ mượt mà
                 full_response = ""
                 for chunk in ai_response.split(" "):
                     full_response += chunk + " "
@@ -244,3 +233,6 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                 message_placeholder.markdown(full_response)
                 st.session_state.messages.append({"role": "assistant", "content": full_response})
                 
+            except Exception as e:
+                error_msg = f"❌ Hệ thống phản hồi chậm hoặc hết hạn mức API: {e}. Bạn vui lòng thử lại sau vài giây nhé!"
+                message_placeholder.markdown(error_msg)
