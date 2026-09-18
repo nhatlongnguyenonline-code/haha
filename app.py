@@ -17,53 +17,49 @@ st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🐦‍🔥
 
 st.markdown("""
     <style>
-    /* 🎨 NGHỆ THUẬT PHOENIX: TRANG TRÍ ĐỒ HỌA 2 SỌC KÉP CHẠY DỌC ĐỐI XỨNG HAI BÊN */
+    /* 🪵 NGHỆ THUẬT MỘC: TRANG TRÍ MỘT DẢI THANH GỖ MỘC SANG TRỌNG CHẠY NGANG ĐẦU TRANG */
     .stApp::before {
         content: "" !important;
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
-        width: 14px !important;
-        height: 100vh !important;
-        /* Sọc kép trái: Đỏ lửa chủ đạo phối Xanh dương công nghệ song song */
-        background: repeating-linear-gradient(90deg, #EF4444 0px, #EF4444 6px, #FFFFFF 6px, #FFFFFF 8px, #3B82F6 8px, #3B82F6 14px) !important;
-        z-index: 9999 !important;
-        box-shadow: 3px 0 12px rgba(239, 68, 68, 0.15) !important;
-    }
-    .stApp::after {
-        content: "" !important;
-        position: fixed !important;
-        top: 0 !important;
-        right: 0 !important;
-        width: 14px !important;
-        height: 100vh !important;
-        /* Sọc kép phải: Xanh dương phối Đỏ lửa đối xứng ngược chiều nghệ thuật */
-        background: repeating-linear-gradient(90deg, #3B82F6 0px, #3B82F6 6px, #FFFFFF 6px, #FFFFFF 8px, #EF4444 8px, #EF4444 14px) !important;
-        z-index: 9999 !important;
-        box-shadow: -3px 0 12px rgba(59, 130, 246, 0.15) !important;
+        width: 100% !important;
+        height: 12px !important; /* Độ dày dải mộc đầu trang */
+        /* Màu nâu gỗ sồi sang trọng kết hợp các vân sáng nhạt tinh tế */
+        background: linear-gradient(90deg, #8B5A2B 0%, #A0522D 50%, #8B5A2B 100%) !important;
+        z-index: 10000 !important;
+        box-shadow: 0 3px 10px rgba(139, 90, 43, 0.3) !important;
     }
 
-    /* 🎨 NGHỆ THUẬT PHOENIX: TRANG TRÍ CHỖ TRỐNG MÀU SẮC NHẸ NHÀNG */
-    /* Bo góc và đổ màu nền vàng cam pastel cực dịu cho các vùng trống của thanh Sidebar */
+    /* 🎨 NGHỆ THUẬT PHOENIX: TRANG TRÍ ĐỒ HỌA 2 SỌC KÉP CHẠY DỌC HAI BÊN RÌA */
+    body {
+        border-left: 12px solid transparent !important;
+        border-right: 12px solid transparent !important;
+    }
+    html {
+        background: 
+            repeating-linear-gradient(90deg, #EF4444 0px, #EF4444 4px, #FFFFFF 4px, #FFFFFF 6px, #3B82F6 6px, #3B82F6 10px) 0 0 no-repeat,
+            repeating-linear-gradient(90deg, #3B82F6 0px, #3B82F6 4px, #FFFFFF 4px, #FFFFFF 6px, #EF4444 6px, #EF4444 10px) 100% 0 no-repeat !important;
+        background-size: 10px 100% !important;
+    }
+
+    /* 🎨 TRANG TRÍ CHỖ TRỐNG SIDEBAR MÀU SẮC NHẸ NHÀNG */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #F8FAFC 0%, #FFF7ED 100%) !important;
         border-right: 1px solid #FED7AA !important;
     }
     
-    /* Tô điểm nhẹ nhàng cho khung bong bóng hội thoại chat */
+    /* TO ĐIỂM KHUNG BONG BÓNG CHAT */
     [data-testid="stChatMessage"] {
         border-radius: 18px !important;
         margin-bottom: 16px !important;
         padding: 16px 20px !important;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important;
-        transition: all 0.3s ease !important;
     }
-    /* Khung chat Trợ Lý AI: Nền xám tro pha hồng cam Phoenix nhạt siêu tinh tế */
     [data-testid="stChatMessageAssistant"] {
         background-color: #FFFDFA !important;
         border: 1px solid #FFE4E6 !important;
     }
-    /* Khung chat Bạn gõ: Nền xanh dương pastel hoàng gia thanh lịch */
     [data-testid="stChatMessageUser"] {
         background-color: #F0F6FF !important;
         border: 1px solid #DBEAFE !important;
@@ -85,14 +81,13 @@ st.markdown("""
     .stChatInput textarea { color: #1F2937 !important; font-size: 0.95rem !important; font-weight: 500 !important; }
     .stChatInput button { background-color: #3B82F6 !important; color: white !important; border-radius: 50% !important; }
     
-    /* Ẩn icon mặc định thô sơ hệ thống */
     [data-testid="stHeaderHeading"] svg, [data-testid="stHeaderHeading"] div, [data-testid="stElementContainer"] h1 svg {
         display: none !important;
     }
     [data-testid="stChatMessageAvatar"] { border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.2rem !important; }
 
     /* TIÊU ĐỀ CHUYỂN MÀU GRADIENT PHOENIX */
-    .premium-title-container { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 1.5rem; margin-bottom: 4px; }
+    .premium-title-container { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 2rem; margin-bottom: 4px; }
     .premium-logo { font-size: 2.5rem; }
     .premium-text { font-size: 2.3rem; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(90deg, #EF4444, #3B82F6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .sub-title { text-align: center; color: #64748B !important; font-size: 0.95rem; margin-bottom: 1.5rem; }
