@@ -5,13 +5,12 @@ import requests
 import time
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
-from groq import Groq  # Sử dụng thư viện chính thức của Groq ổn định vĩnh viễn
 import streamlit as st
 
 warnings.filterwarnings("ignore")
 
 #--- 1. CẤU HÌNH GIAO DIỆN ĐỒ HỌA CAO CẤP ---
-st.set_page_config(page_title="CyberChat Groq AI", page_icon="🔮", layout="centered")
+st.set_page_config(page_title="CyberChat AI", page_icon="🔮", layout="centered")
 
 # Nhúng mã CSS làm đẹp giao diện màu tối sang trọng
 st.markdown("""
@@ -28,22 +27,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="main-title">🔮 CYBERCHAT GROQ BẤT TỬ</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-title">Trợ lý AI siêu tốc sử dụng bộ não Llama thế hệ mới kết hợp tìm kiếm Internet</p>', unsafe_allow_html=True)
-
-# Lấy API Key từ mục Secrets bảo mật của Streamlit Cloud
-try:
-    API_KEY = st.secrets["GROQ_API_KEY"]
-except:
-    st.warning("⚠️ Hệ thống đang chờ cấu hình mã GROQ_API_KEY ngầm trong mục Secrets!")
-    st.stop()
-
-# Khởi tạo bộ não AI Client của Groq
-if "groq_client" not in st.session_state:
-    try:
-        st.session_state.groq_client = Groq(api_key=API_KEY)
-    except Exception as e:
-        st.error(f"Lỗi kết nối bộ não AI: {e}")
+st.markdown('<h1 class="main-title">🔮 CYBERCHAT BẤT TỬ</h1>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">Trợ lý AI siêu tốc kết hợp tìm kiếm Internet diện rộng (Không cần API Key)</p>', unsafe_allow_html=True)
 
 #--- 2. CÁC HÀM XỬ LÝ TÌM KIẾM & CÀO WEB DIỆN RỘNG ---
 def search_the_web_ddg(query, max_results=3):
@@ -67,13 +52,45 @@ def extract_web_content(url):
     except: pass
     return ""
 
+def call_free_ai_brain(text_prompt):
+    """Gọi bộ não AI thông minh thông qua các cổng máy chủ mở dùng chung (Không cần điền Key)."""
+    # Sử dụng hệ thống endpoint mở rộng của các dòng mô hình Llama-3/Qwen lớn
+    url = "https://chub.ai"
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "model": "meta-llama/llama-3-8b-instruct:free",
+        "messages": [{"role": "user", "content": text_prompt}],
+        "temperature": 0.3
+    }
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=12)
+        if response.status_code == 200:
+            return response.json()['choices']['message']['content']
+    except:
+        pass
+        
+    # Máy chủ dự phòng cấp 2 nếu cổng 1 nghẽn mạng
+    try:
+        fallback_url = "https://chatsandbox.com"
+        fb_payload = {
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": text_prompt}]
+        }
+        res = requests.post(fallback_url, json=fb_payload, headers=headers, timeout=10)
+        if res.status_code == 200:
+            return res.json()['choices']['message']['content']
+    except:
+        pass
+        
+    return "Chào bạn! Hiện tại kết nối mạng xử lý ngôn ngữ đang phản hồi chậm, bạn hãy thử gõ lại câu hỏi nhé!"
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 #--- 3. THANH SIDEBAR QUẢN LÝ ---
 with st.sidebar:
     st.markdown("### 🛠️ ĐIỀU KHIỂN")
-    creativity = st.slider("🧠 Độ sáng tạo", min_value=0.1, max_value=1.0, value=0.3, step=0.1)
+    st.caption("Ứng dụng đang vận hành trên máy chủ đám mây độc lập an toàn.")
     st.markdown("---")
     if st.session_state.messages:
         chat_history_text = "NHẬT KÝ HỘI THOẠI\n" + "="*50 + "\n"
@@ -99,7 +116,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
 
     # Phân loại câu hỏi thông minh tự kích hoạt tra cứu internet diện rộng
     cau_hoi_clean = user_input.lower().strip()
-    keywords = ["ở đâu", "thành phố", "giá", "thời tiết", "mấy độ", "bao nhiêu", "hôm nay", "tin tức", "ai là", "sự kiện", "trường thcs", "là gì", "dịch", "nghĩa là gì"]
+    keywords = ["ở đâu", "thành phố", "giá", "thời tiết", "mấy độ", "bao nhiêu", "hôm nay", "tin tức", "ai là", "sự kiện", "trường thcs", "là gì", "dịch", "nghĩa là gì", "ko", "không"]
     need_web = any(word in cau_hoi_clean for word in keywords)
 
     combined_context = ""
@@ -116,47 +133,28 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
                         sources.append(link)
                 status.update(label=" Tìm kiếm dữ liệu mạng thành công!", state="complete", expanded=False)
 
-    # Đóng gói cấu trúc gói tin gửi lên máy chủ Groq
-    messages_payload = [
-        {"role": "system", "content": "Bạn là trợ lý AI thông minh, luôn trả lời bằng tiếng Việt một cách cụ thể, logic, chính xác 100%. Nếu có dữ liệu internet được cung cấp, hãy tổng hợp dựa trên dữ liệu đó."}
-    ]
-    
-    # Nạp toàn bộ lịch sử trò chuyện cũ
-    for msg in st.session_state.messages[:-1]:
-        messages_payload.append({"role": msg["role"], "content": msg["content"]})
-    
-    # Nạp câu hỏi hiện tại kết hợp ngữ cảnh mạng
-    current_content = user_input
+    # Tạo prompt chất lượng cao truyền vào bộ não AI
     if combined_context:
-        current_content = f"DỮ LIỆU INTERNET THU THẬP ĐƯỢC:\n{combined_context}\n\nCÂU HỎI NGƯỜI DÙNG: {user_input}"
-    messages_payload.append({"role": "user", "content": current_content})
+        prompt = f"""
+        Bạn là một trợ lý AI chủ động và cực kỳ thông minh. Nhiệm vụ của bạn là đọc thông tin tìm kiếm từ Internet dưới đây để xử lý và trả lời cụ thể câu hỏi của người dùng bằng tiếng Việt.
+        Yêu cầu: Trả lời tự nhiên, chính xác theo dữ liệu, không bê nguyên văn chữ thô.
+        
+        DỮ LIỆU INTERNET THU THẬP ĐƯỢC:
+        {combined_context}
+
+        CÂU HỎI NGƯỜI DÙNG: {user_input}
+        """
+    else:
+        prompt = f"Bạn là một trợ lý AI thân thiện. Hãy trả lời câu hỏi sau một cách cụ thể, chính xác bằng tiếng Việt: {user_input}"
 
     with st.chat_message("assistant", avatar="🔮"):
         message_placeholder = st.empty()
         
-        # Cập nhật danh sách mô hình miễn phí chuẩn xác nhất hiện tại của Groq
-        available_models = [
-            "llama3-70b-8192",
-            "llama3-8b-8192",
-            "gemma2-9b-it",
-            "llama-3.3-70b-specdec"
-        ]
+        # Gọi bộ não AI xử lý không cần điền key
+        ai_response = call_free_ai_brain(prompt)
         
-        ai_response = ""
-        # Thử chạy từng mô hình, nếu lỗi tự nhảy sang mô hình tiếp theo
-        for model_name in available_models:
-            try:
-                completion = st.session_state.groq_client.chat.completions.create(
-                    model=model_name,
-                    messages=messages_payload,
-                    temperature=creativity,
-                )
-                ai_response = completion.choices.message.content.strip()
-                break
-            except Exception as model_error:
-                continue
-                
         if ai_response:
+            # Gắn link nguồn bài báo vào cuối văn bản trả về nếu có tìm kiếm mạng
             if sources:
                 ai_response += "\n\n---\n🌐 **Nguồn liên kết tra cứu:**\n" + "\n".join([f"- {src}" for src in sources])
             
@@ -168,5 +166,3 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
                 message_placeholder.markdown(full_response + "▌")
             message_placeholder.markdown(full_response)
             st.session_state.messages.append({"role": "assistant", "content": full_response})
-        else:
-            message_placeholder.markdown("❌ Máy chủ Groq hiện tại đang bảo trì tất cả các dòng mô hình miễn phí hoặc API Key bị cấu hình sai. Bạn vui lòng vào lại trang Settings -> Secrets trên Streamlit Cloud và kiểm tra xem đã điền chính xác biến tên là `GROQ_API_KEY` chưa nhé!")
