@@ -10,19 +10,32 @@ import streamlit as st
 
 warnings.filterwarnings("ignore")
 
-#--- 1. CẤU HÌNH GIAO DIỆN ĐỒ HỌA DỄ NHÌN (MODERN SLATE) ---
+#--- 1. CẤU HÌNH GIAO DIỆN NỀN TRẮNG CHỮ ĐEN (MINIMALIST LIGHT MODE) ---
 st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🤖", layout="centered")
 
-# Nhúng mã CSS tinh chỉnh màu sắc dịu mắt, làm nổi bật khung gõ câu hỏi
+# Nhúng mã CSS tinh chỉnh nền trắng, chữ đen đậm và khung gõ câu hỏi nổi bật
 st.markdown("""
     <style>
-    /* Màu nền tổng thể dịu mắt, chữ sáng rõ ràng */
+    /* Màu nền tổng thể màu trắng sạch sẽ, chữ màu đen đậm rõ nét */
     .stApp {
-        background-color: #111827;
-        color: #F3F4F6;
+        background-color: #FFFFFF !important;
+        color: #111827 !important;
     }
     
-    /* LÀM NỔI BẬT KHUNG VIẾT CÂU HỎI */
+    /* Chỉnh sửa toàn bộ các đoạn chữ text mặc định sang màu đen */
+    h1, h2, h3, p, span, label, .stMarkdown {
+        color: #111827 !important;
+    }
+    
+    /* Chỉnh sửa thanh Sidebar bên trái sang màu xám nhẹ dễ nhìn */
+    [data-testid="stSidebar"] {
+        background-color: #F3F4F6 !important;
+    }
+    [data-testid="stSidebar"] * {
+        color: #111827 !important;
+    }
+
+    /* ĐỊNH DẠNG KHUNG VIẾT CÂU HỎI SIÊU RÕ RÀNG */
     .stChatInput {
         position: fixed;
         bottom: 20px;
@@ -31,28 +44,28 @@ st.markdown("""
         z-index: 999;
     }
     .stChatInput [data-testid="stChatInputCurrentContainer"] {
-        border: 2px solid #3B82F6 !important; /* Viền xanh dương đậm nổi bật */
-        border-radius: 16px !important;
-        background-color: #1F2937 !important; /* Nền ô gõ tối vừa phải để tương phản với chữ */
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25) !important; /* Đổ bóng phát sáng nhẹ để dễ nhận biết */
+        border: 2px solid #2563EB !important; /* Viền xanh dương đậm rõ nét */
+        border-radius: 12px !important;
+        background-color: #FAFAFA !important; /* Nền ô gõ màu trắng xám */
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important; /* Đổ bóng nhẹ */
     }
     .stChatInput textarea {
-        color: #FFFFFF !important; /* Chữ bạn gõ sẽ có màu trắng tinh cực rõ */
+        color: #111827 !important; /* Chữ gõ màu đen đậm rõ ràng */
         font-size: 1rem !important;
     }
 
-    /* TIÊU ĐỀ RÕ RÀNG */
+    /* TIÊU ĐỀ CHÍNH MÀU XANH DƯƠNG ĐẬM */
     .main-title {
         font-size: 2.3rem;
         font-weight: 700;
-        color: #3B82F6;
+        color: #1D4ED8 !important;
         text-align: center;
         margin-top: 1rem;
         margin-bottom: 5px;
     }
     .sub-title {
         text-align: center;
-        color: #9CA3AF;
+        color: #4B5563 !important;
         font-size: 1rem;
         margin-bottom: 2rem;
     }
@@ -129,7 +142,6 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 #--- 4. KHUNG NHẬP LIỆU VÀ XỬ LÝ LOGIC ---
-# Ô nhập liệu có gợi ý chữ to rõ ràng ở dưới cùng màn hình
 if user_input := st.chat_input("HÃY GÕ CÂU HỎI CỦA BẠN VÀO ĐÂY VÀ ẤN ENTER..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user", avatar="👤"): 
@@ -174,7 +186,7 @@ if user_input := st.chat_input("HÃY GÕ CÂU HỎI CỦA BẠN VÀO ĐÂY VÀ �
             if sources:
                 ai_response += "\n\n---\n🌐 **Nguồn liên kết tra cứu:**\n" + "\n".join([f"- {src}" for src in sources])
             
-            # Hiệu ứng gõ chữ từng từ mượt mà trực quan
+            # Hiệu ứng gõ chữ từng từ mượt mà trực quan màu đen sắc nét
             full_response = ""
             for chunk in ai_response.split(" "):
                 full_response += chunk + " "
