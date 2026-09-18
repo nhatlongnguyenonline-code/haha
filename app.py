@@ -10,10 +10,10 @@ import streamlit as st
 
 warnings.filterwarnings("ignore")
 
-#--- 1. CẤU HÌNH GIAO DIỆN NỀN TRẮNG CHỮ ĐEN (MINIMALIST LIGHT MODE) ---
+#--- 1. CẤU HÌNH GIAO DIỆN NỀN TRẮNG CHỮ ĐEN THU GỌN KHUNG NHẬP LIỆU ---
 st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🤖", layout="centered")
 
-# Nhúng mã CSS tinh chỉnh nền trắng, chữ đen đậm và khung gõ câu hỏi nổi bật
+# Nhúng mã CSS tinh chỉnh nền trắng, chữ đen đậm và thu gọn 2 đầu ô gõ câu hỏi
 st.markdown("""
     <style>
     /* Màu nền tổng thể màu trắng sạch sẽ, chữ màu đen đậm rõ nét */
@@ -35,19 +35,24 @@ st.markdown("""
         color: #111827 !important;
     }
 
-    /* ĐỊNH DẠNG KHUNG VIẾT CÂU HỎI SIÊU RÕ RÀNG */
+    /* ĐỊNH DẠNG THU NGẮN 2 ĐẦU KHUNG VIẾT CÂU HỎI */
     .stChatInput {
         position: fixed;
         bottom: 20px;
         left: 0;
         right: 0;
         z-index: 999;
+        display: flex;
+        justify-content: center;
     }
     .stChatInput [data-testid="stChatInputCurrentContainer"] {
+        max-width: 700px !important; /* Thu hẹp độ dài tối đa của ô gõ câu hỏi */
+        width: 70% !important;        /* Căn chỉnh ô gõ chiếm 70% chiều rộng màn hình */
+        margin: 0 auto !important;    /* Tự động căn giữa đều hai đầu */
         border: 2px solid #2563EB !important; /* Viền xanh dương đậm rõ nét */
         border-radius: 12px !important;
         background-color: #FAFAFA !important; /* Nền ô gõ màu trắng xám */
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important; /* Đổ bóng nhẹ */
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important; /* Đổ bóng mờ nhẹ */
     }
     .stChatInput textarea {
         color: #111827 !important; /* Chữ gõ màu đen đậm rõ ràng */
