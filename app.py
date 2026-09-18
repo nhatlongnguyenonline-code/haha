@@ -5,30 +5,62 @@ import requests
 import time
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
-from google import genai  # Sử dụng thư viện SDK thế hệ mới của Google
+from google import genai
 import streamlit as st
 
 warnings.filterwarnings("ignore")
 
-#--- 1. CẤU HÌNH GIAO DIỆN ĐỒ HỌA CAO CẤP (CYBERCHAT) ---
-st.set_page_config(page_title="CyberChat Gemini API", page_icon="🔮", layout="centered")
+#--- 1. CẤU HÌNH GIAO DIỆN ĐỒ HỌA DỄ NHÌN (MODERN SLATE) ---
+st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🤖", layout="centered")
 
+# Nhúng mã CSS tinh chỉnh màu sắc dịu mắt, làm nổi bật khung gõ câu hỏi
 st.markdown("""
     <style>
-    .stApp { background-color: #0E1117; color: #E2E8F0; }
+    /* Màu nền tổng thể dịu mắt, chữ sáng rõ ràng */
+    .stApp {
+        background-color: #111827;
+        color: #F3F4F6;
+    }
+    
+    /* LÀM NỔI BẬT KHUNG VIẾT CÂU HỎI */
+    .stChatInput {
+        position: fixed;
+        bottom: 20px;
+        left: 0;
+        right: 0;
+        z-index: 999;
+    }
     .stChatInput [data-testid="stChatInputCurrentContainer"] {
-        border: 1px solid #3F83F8 !important; border-radius: 20px !important; background-color: #1A1F2C !important;
+        border: 2px solid #3B82F6 !important; /* Viền xanh dương đậm nổi bật */
+        border-radius: 16px !important;
+        background-color: #1F2937 !important; /* Nền ô gõ tối vừa phải để tương phản với chữ */
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25) !important; /* Đổ bóng phát sáng nhẹ để dễ nhận biết */
     }
+    .stChatInput textarea {
+        color: #FFFFFF !important; /* Chữ bạn gõ sẽ có màu trắng tinh cực rõ */
+        font-size: 1rem !important;
+    }
+
+    /* TIÊU ĐỀ RÕ RÀNG */
     .main-title {
-        font-size: 2.5rem; font-weight: 800; background: linear-gradient(90deg, #3B82F6, #8B5CF6);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 0px;
+        font-size: 2.3rem;
+        font-weight: 700;
+        color: #3B82F6;
+        text-align: center;
+        margin-top: 1rem;
+        margin-bottom: 5px;
     }
-    .sub-title { text-align: center; color: #94A3B8; font-size: 0.95rem; margin-bottom: 2rem; }
+    .sub-title {
+        text-align: center;
+        color: #9CA3AF;
+        font-size: 1rem;
+        margin-bottom: 2rem;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="main-title">🔮 CYBERCHAT GEMINI API</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-title">Trợ lý AI sử dụng bộ bộ não Gemini chính thức kết hợp tìm kiếm Internet diện rộng</p>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">🤖 TRỢ LÝ AI TOÀN NĂNG</h1>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">Hệ thống đọc hiểu kiến thức và tra cứu thông tin Internet diện rộng</p>', unsafe_allow_html=True)
 
 # Lấy API Key từ mục Secrets bảo mật của Streamlit Cloud
 try:
@@ -41,7 +73,6 @@ except:
 if "ai_client" not in st.session_state:
     try:
         st.session_state.ai_client = genai.Client(api_key=API_KEY)
-        # Sử dụng mô hình gemini-2.5-flash chuẩn toàn cầu, chạy siêu tốc và ổn định tuyệt đối
         st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
     except Exception as e:
         st.error(f"Lỗi kết nối bộ não AI: {e}. Vui lòng kiểm tra lại Key trong mục Secrets.")
@@ -72,33 +103,34 @@ def extract_web_content(url):
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-#--- 3. THANH SIDEBAR QUẢN LÝ ỨNG DỤNG ---
+#--- 3. THANH SIDEBAR BÊN TRÁI GỌN GÀNG ---
 with st.sidebar:
-    st.markdown("### 🛠️ ĐIỀU KHIỂN CHATBOT")
-    creativity = st.slider("🧠 Độ sáng tạo của AI", min_value=0.1, max_value=1.0, value=0.3, step=0.1)
+    st.markdown("### ⚙️ CÀI ĐẶT CHATBOT")
+    creativity = st.slider("🧠 Độ nhạy bén / Sáng tạo", min_value=0.1, max_value=1.0, value=0.3, step=0.1)
     st.markdown("---")
-    st.markdown("### 📂 QUẢN LÝ DỮ LIỆU")
+    st.markdown("### 📂 NHẬT KÝ")
     if st.session_state.messages:
-        chat_history_text = "NHẬT KÝ HỘI THOẠI CYBERCHAT AI\n" + "="*50 + "\n"
+        chat_history_text = "NHẬT KÝ HỘI THOẠI AI\n" + "="*50 + "\n"
         for msg in st.session_state.messages:
             role_name = "Bạn" if msg["role"] == "user" else "AI Trợ Lý"
             chat_history_text += f"\n[ {role_name} ]: {msg['content']}\n"
-        st.download_button(label="📥 Tải lịch sử chat (.txt)", data=chat_history_text, file_name="CyberChat_History.txt", mime="text/plain", use_container_width=True)
-        if st.button("🗑️ Xóa toàn bộ cuộc trò chuyện", use_container_width=True):
+        st.download_button(label="📥 Tải lịch sử chat (.txt)", data=chat_history_text, file_name="AI_Chat_History.txt", mime="text/plain", use_container_width=True)
+        if st.button("🗑️ Xóa cuộc trò chuyện", use_container_width=True):
             st.session_state.messages = []
-            st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-2.5-flash")
+            st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
             st.rerun()
     else:
-        st.caption("Trò chuyện với AI để kích hoạt tính năng tải tệp lịch sử.")
+        st.caption("Chưa có đoạn chat nào để tải về.")
 
 # Hiển thị lịch sử bong bóng chat cũ lên màn hình web
 for message in st.session_state.messages:
-    avatar_icon = "👤" if message["role"] == "user" else "🔮"
+    avatar_icon = "👤" if message["role"] == "user" else "🤖"
     with st.chat_message(message["role"], avatar=avatar_icon): 
         st.markdown(message["content"])
 
 #--- 4. KHUNG NHẬP LIỆU VÀ XỬ LÝ LOGIC ---
-if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu internet vào đây..."):
+# Ô nhập liệu có gợi ý chữ to rõ ràng ở dưới cùng màn hình
+if user_input := st.chat_input("HÃY GÕ CÂU HỎI CỦA BẠN VÀO ĐÂY VÀ ẤN ENTER..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user", avatar="👤"): 
         st.markdown(user_input)
@@ -111,7 +143,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
     sources = []
     
     if need_web:
-        with st.status("🔍 Hệ thống đang kết nối Internet diện rộng và tìm kiếm dữ liệu...", expanded=True) as status:
+        with st.status("🔍 Đang kết nối mạng và tìm kiếm thông tin thực tế...", expanded=False) as status:
             web_links = search_the_web_ddg(user_input)
             if web_links:
                 for link in web_links:
@@ -119,7 +151,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
                     if content:
                         combined_context += f"\n--- Nguồn thông tin: {link} ---\n{content}\n"
                         sources.append(link)
-                status.update(label=" Tìm kiếm dữ liệu mạng thành công!", state="complete", expanded=False)
+                status.update(label=" Đọc dữ liệu mạng thành công!", state="complete")
 
     if combined_context:
         prompt = f"""
@@ -130,10 +162,9 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
     else:
         prompt = user_input
 
-    with st.chat_message("assistant", avatar="🔮"):
+    with st.chat_message("assistant", avatar="🤖"):
         message_placeholder = st.empty()
         try:
-            # Gửi tin nhắn vào phiên chat sử dụng thư viện SDK thế hệ mới
             response = st.session_state.chat_session.send_message(
                 prompt,
                 config={"temperature": creativity}
@@ -143,15 +174,15 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
             if sources:
                 ai_response += "\n\n---\n🌐 **Nguồn liên kết tra cứu:**\n" + "\n".join([f"- {src}" for src in sources])
             
-            # Hiệu ứng chạy chữ chạy từng từ giống ChatGPT
+            # Hiệu ứng gõ chữ từng từ mượt mà trực quan
             full_response = ""
             for chunk in ai_response.split(" "):
                 full_response += chunk + " "
-                time.sleep(0.03)
+                time.sleep(0.02)
                 message_placeholder.markdown(full_response + "▌")
             message_placeholder.markdown(full_response)
             st.session_state.messages.append({"role": "assistant", "content": full_response})
             
         except Exception as e:
-            error_msg = f"❌ Máy chủ phản hồi chậm hoặc API bận: {e}. Bạn vui lòng nhấn Enter câu hỏi lại sau vài giây nhé!"
+            error_msg = f"❌ Hệ thống bận: {e}. Bạn vui lòng nhấn Enter câu hỏi lại sau vài giây nhé!"
             message_placeholder.markdown(error_msg)
