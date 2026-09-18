@@ -6,25 +6,28 @@ import time
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 from google import genai
-from google.genai import types  # Thư viện hỗ trợ nạp dữ liệu ảnh thô
-from PIL import Image  # Thư viện xử lý hình ảnh của Python
+from google.genai import types  
+from PIL import Image  
 import streamlit as st
 
 warnings.filterwarnings("ignore")
 
-#--- 1. CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE HỖ TRỢ GỬI ẢNH ---
+#--- 1. CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE ĐẸP MẮT ---
 st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🤖", layout="centered")
 
-# Nhúng mã CSS khóa chặt ô gõ câu hỏi nhỏ gọn ở chính giữa màn hình và làm đẹp giao diện
+# Nhúng mã CSS làm đẹp toàn diện, thiết lập khung hình tròn cho Avatar Phượng Hoàng
 st.markdown("""
     <style>
+    /* Nền tổng thể trắng tinh khôi, font chữ mượt mà dịu mắt */
     .stApp {
         background-color: #FFFFFF !important;
         color: #1F2937 !important;
     }
+    
     h1, h2, h3, p, span, label, .stMarkdown {
         color: #1F2937 !important;
     }
+    
     [data-testid="stSidebar"] {
         background-color: #F8FAFC !important;
         border-right: 1px solid #E2E8F0 !important;
@@ -33,7 +36,7 @@ st.markdown("""
         color: #1F2937 !important;
     }
 
-    /* ĐỊNH DẠNG KHUNG VIẾT CÂU HỎI LUÔN NẰM CỐ ĐỊNH CHÍNH GIỮA MÀN HÌNH */
+    /* 🎯 ÉP THANH NHẬP CÂU HỎI LUÔN NẰM CỐ ĐỊNH CHÍNH GIỮA MÀN HÌNH */
     .stChatInput {
         position: fixed !important;
         bottom: 30px !important;
@@ -64,16 +67,37 @@ st.markdown("""
         border-radius: 50% !important;
     }
 
-    /* ĐỊNH DẠNG KHUNG TIN NHẮN CHAT BONG BÓNG */
+    /* 🎨 THIẾT KẾ BONG BÓNG CHAT VÀ ÉP FRAME HÌNH TRÒN CHO AVATAR PHƯỢNG HOÀNG */
     [data-testid="stChatMessage"] {
-        background-color: #F1F5F9 !important;
         border-radius: 16px !important;
-        margin-bottom: 12px !important;
-        padding: 12px 16px !important;
+        margin-bottom: 16px !important;
+        padding: 16px 20px !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
     }
+    
+    /* Khung chat của AI */
+    [data-testid="stChatMessageAssistant"] {
+        background-color: #F8FAFC !important;
+        border: 1px solid #E2E8F0 !important;
+    }
+    /* Ép khung hình tròn bo viền phát sáng nhẹ giống ChatGPT cho avatar Phượng Hoàng */
+    [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"] {
+        border-radius: 50% !important;
+        overflow: hidden !important;
+        border: 1.5px solid #EF4444 !important; /* Viền đỏ rực rỡ */
+        box-shadow: 0 0 8px rgba(239, 68, 68, 0.2) !important;
+    }
+    
+    /* Khung chat của Người dùng */
     [data-testid="stChatMessageUser"] {
-        background-color: #EFF6FF !important;
-        border: 1px solid #BFDBFE !important;
+        background-color: #F0F6FF !important;
+        border: 1px solid #DBEAFE !important;
+    }
+    [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"] {
+        background: linear-gradient(135deg, #3B82F6, #1D4ED8) !important;
+        color: white !important;
+        font-weight: bold !important;
+        border-radius: 50% !important;
     }
 
     .main-title {
@@ -143,7 +167,6 @@ with st.sidebar:
     creativity = st.slider("🧠 Độ nhạy bén / Sáng tạo", min_value=0.1, max_value=1.0, value=0.3, step=0.1)
     st.markdown("---")
     
-    # 📸 KHUNG TẢI ẢNH ĐƯỢC ĐƯA VÀO THANH SIDEBAR ĐỂ KHÔNG BỊ PHÌNH MÀN HÌNH CHÍNH
     st.markdown("### 📸 PHÂN TÍCH HÌNH ẢNH")
     uploaded_file = st.file_uploader("Tải ảnh lên tại đây (.png, .jpg, .jpeg)...", type=["png", "jpg", "jpeg"])
     
@@ -165,16 +188,23 @@ with st.sidebar:
             st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
             st.rerun()
 
+# 🌐 ĐƯỜNG LINK ẢNH VECTOR PHƯỢNG HOÀNG ĐỎ - XANH DƯƠNG TRÒN PREMIUM CAO CẤP
+PHOENIX_AVATAR = "https://freepik.com"
+
 # Hiển thị lịch sử bong bóng chat cũ lên màn hình web
 for message in st.session_state.messages:
-    avatar_icon = "👤" if message["role"] == "user" else "🤖"
-    with st.chat_message(message["role"], avatar=avatar_icon): 
-        st.markdown(message["content"])
+    if message["role"] == "user":
+        with st.chat_message("user", avatar="ME"): 
+            st.markdown(message["content"])
+    else:
+        # Nạp ảnh Phượng Hoàng vào khung tròn của AI trợ lý
+        with st.chat_message("assistant", avatar=PHOENIX_AVATAR): 
+            st.markdown(message["content"])
 
 #--- 4. KHUNG NHẬP LIỆU VÀ XỬ LÝ LOGIC ---
 if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user", avatar="👤"): 
+    with st.chat_message("user", avatar="ME"): 
         st.markdown(user_input)
 
     cau_hoi_clean = user_input.lower().strip()
@@ -197,14 +227,14 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
 
     if combined_context:
         prompt_payload = f"""
-        [HỆ THỐNG]: Dưới đây là thông tin thực tế từ Internet. Hãy đọc hiểu và trả lời cụ thể câu hỏi của người dùng bằng tiếng Việt.
+        [HỆ THỐNG]: Dưới đây là thông tin thực tế từ Internet. Hãy đọc hiểu và trả lời cụ thể câu hỏi của người dùng bằng tiếng Việt. Tuyệt đối không được bịa đặt thông tin.
         DỮ LIỆU INTERNET: {combined_context}
         CÂU HỎI NGƯỜI DÙNG: {user_input}
         """
     else:
         prompt_payload = user_input
 
-    with st.chat_message("assistant", avatar="🤖"):
+    with st.chat_message("assistant", avatar=PHOENIX_AVATAR):
         message_placeholder = st.empty()
         with st.spinner("🤖 AI đang suy nghĩ câu trả lời..."):
             try:
@@ -221,18 +251,3 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                         config={"temperature": creativity}
                     )
                 
-                ai_response = response.text.strip()
-                if sources:
-                    ai_response += "\n\n---\n🌐 **Nguồn liên kết tra cứu:**\n" + "\n".join([f"- {src}" for src in sources])
-                
-                full_response = ""
-                for chunk in ai_response.split(" "):
-                    full_response += chunk + " "
-                    time.sleep(0.02)
-                    message_placeholder.markdown(full_response + "▌")
-                message_placeholder.markdown(full_response)
-                st.session_state.messages.append({"role": "assistant", "content": full_response})
-                
-            except Exception as e:
-                error_msg = f"❌ Hệ thống phản hồi chậm hoặc hết hạn mức API: {e}. Bạn vui lòng thử lại sau vài giây nhé!"
-                message_placeholder.markdown(error_msg)
