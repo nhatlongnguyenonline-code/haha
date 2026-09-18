@@ -12,6 +12,10 @@ import streamlit as st
 
 warnings.filterwarnings("ignore")
 
+# 🌐 ĐƯỜNG LINK ẢNH PHƯỢNG HOÀNG ĐỎ - XANH DƯƠNG HÌNH TRÒN PREMIUM
+PHOENIX_AVATAR = "https://freepik.com"
+USER_AVATAR = "https://freepik.com"
+
 #--- 1. CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE KHÓA CHÍNH GIỮA ---
 st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🤖", layout="centered")
 
@@ -37,54 +41,15 @@ st.markdown("""
     .stChatInput textarea { color: #1F2937 !important; font-size: 0.95rem !important; font-weight: 500 !important; }
     .stChatInput button { background-color: #3B82F6 !important; color: white !important; border-radius: 50% !important; }
 
-    /* KHUNG TIN NHẮN CHAT */
+    /* KHUNG TIN NHẮN CHAT BO GÓC MỀM MẠI */
     [data-testid="stChatMessage"] { border-radius: 16px !important; margin-bottom: 16px !important; padding: 16px 20px !important; }
-    
-    /* 🔴 ÉP NẠP LOGO PHƯỢNG HOÀNG BẰNG CSS ĐÈ TẬN GỐC */
     [data-testid="stChatMessageAssistant"] { background-color: #F8FAFC !important; border: 1px solid #E2E8F0 !important; }
-    [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"] {
-        border-radius: 50% !important; overflow: hidden !important; 
-        border: 2px solid #EF4444 !important;
-        box-shadow: 0 0 8px rgba(239, 68, 68, 0.3) !important;
-        background-color: transparent !important;
-    }
-    [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"] svg, 
-    [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"] div,
-    [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"] span {
-        display: none !important;
-    }
-    [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"]::after {
-        content: "" !important;
-        display: block !important;
-        width: 100% !important;
-        height: 100% !important;
-        background-image: url("https://freepik.com") !important;
-        background-size: cover !important;
-        background-position: center !important;
-    }
-    
-    /* 🔵 ÉP NẠP LOGO NGƯỜI DÙNG BẰNG GRADIENT CAO CẤP */
     [data-testid="stChatMessageUser"] { background-color: #F0F6FF !important; border: 1px solid #DBEAFE !important; }
-    [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"] { 
-        border-radius: 50% !important; overflow: hidden !important;
-        border: 2px solid #2563EB !important;
-    }
-    [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"] svg,
-    [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"] div,
-    [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"] span {
-        display: none !important;
-    }
-    [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"]::after {
-        content: "ME" !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        width: 100% !important;
-        height: 100% !important;
-        background: linear-gradient(135deg, #3B82F6, #1D4ED8) !important; 
-        color: white !important;
-        font-size: 11px !important;
-        font-weight: 800 !important;
+    
+    /* ÉP TRÒN CHO TẤT CẢ AVATAR */
+    [data-testid="stChatMessageAvatar"] img {
+        border-radius: 50% !important;
+        object-fit: cover !important;
     }
     
     .main-title { font-size: 2.2rem; font-weight: 800; color: #1E3A8A !important; text-align: center; margin-top: 1.5rem; margin-bottom: 4px; }
@@ -151,13 +116,16 @@ with st.sidebar:
             st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
             st.rerun()
 
+# Truyền trực tiếp hằng số đường dẫn ảnh vào hàm sinh tin nhắn hội thoại cũ
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]): 
+    avt_source = USER_AVATAR if message["role"] == "user" else PHOENIX_AVATAR
+    with st.chat_message(message["role"], avatar=avt_source): 
         st.markdown(message["content"])
 
+# Khung nhận câu hỏi mới
 if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user"): 
+    with st.chat_message("user", avatar=USER_AVATAR): 
         st.markdown(user_input)
 
     cau_hoi_clean = user_input.lower().strip()
@@ -180,7 +148,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
 
     prompt_payload = f"[HỆ THỐNG]: Dựa trên Internet: {combined_context}\nCÂU HỎI: {user_input}" if combined_context else user_input
 
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar=PHOENIX_AVATAR):
         message_placeholder = st.empty()
         with st.spinner("🤖 AI đang suy nghĩ..."):
             try:
