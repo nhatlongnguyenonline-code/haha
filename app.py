@@ -200,8 +200,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                 full_response = ""
                 for chunk in ai_response.split(" "):
                     full_response += chunk + " "
-                    time.sleep(0.01)
+                    time.sleep(0.02)
                     message_placeholder.markdown(full_response + "┃")
                 message_placeholder.markdown(full_response)
                 st.session_state.messages.append({"role": "assistant", "content": full_response})
-                except Exception as e:message_placeholder.markdown(f"❌ Hệ thống bận: {e}. Vui lòng thử lại sau vài giây.")
