@@ -42,7 +42,7 @@ if "ai_client" not in st.session_state:
     try:
         st.session_state.ai_client = genai.Client(api_key=API_KEY)
         # Sử dụng mô hình gemini-2.5-flash chuẩn toàn cầu, chạy siêu tốc và ổn định tuyệt đối
-        st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-2.5-flash")
+        st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
     except Exception as e:
         st.error(f"Lỗi kết nối bộ não AI: {e}. Vui lòng kiểm tra lại Key trong mục Secrets.")
 
