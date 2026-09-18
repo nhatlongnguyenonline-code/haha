@@ -5,7 +5,7 @@ import requests
 import time
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
-from groq import Groq  # Chuyển sang thư viện chính thức của Groq
+from groq import Groq  # Sử dụng thư viện chính thức của Groq ổn định vĩnh viễn
 import streamlit as st
 
 warnings.filterwarnings("ignore")
@@ -13,6 +13,8 @@ warnings.filterwarnings("ignore")
 #--- 1. CẤU HÌNH GIAO DIỆN ĐỒ HỌA CAO CẤP ---
 st.set_page_config(page_title="CyberChat Groq AI", page_icon="🔮", layout="centered")
 
+# Nhúng mã CSS làm đẹp bong bóng chat và giao diện màu tối sang trọng
+# Đã sửa lỗi tham số unsafe_allow_html chuẩn xác 100%
 st.markdown("""
     <style>
     .stApp { background-color: #0E1117; color: #E2E8F0; }
@@ -25,12 +27,12 @@ st.markdown("""
     }
     .sub-title { text-align: center; color: #94A3B8; font-size: 0.95rem; margin-bottom: 2rem; }
     </style>
-""", unsafe_transform=True)
+""", unsafe_allow_html=True)
 
-st.markdown('<h1 class="main-title">🔮 CYBERCHAT GROQ BẤT TỬ</h1>', unsafe_transform=True)
-st.markdown('<p class="sub-title">Trợ lý AI siêu tốc sử dụng bộ não Llama 3.3 kết hợp tìm kiếm Internet</p>', unsafe_transform=True)
+st.markdown('<h1 class="main-title">🔮 CYBERCHAT GROQ BẤT TỬ</h1>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">Trợ lý AI siêu tốc sử dụng bộ não Llama 3.3 kết hợp tìm kiếm Internet</p>', unsafe_allow_html=True)
 
-# Lấy API Key từ mục Secrets
+# Lấy API Key từ mục Secrets bảo mật của Streamlit Cloud
 try:
     API_KEY = st.secrets["GROQ_API_KEY"]
 except:
@@ -84,16 +86,19 @@ with st.sidebar:
             st.session_state.messages = []
             st.rerun()
 
-# Hiển thị lịch sử chat
+# Hiển thị lịch sử bong bóng chat lên màn hình web
 for message in st.session_state.messages:
     avatar_icon = "👤" if message["role"] == "user" else "🔮"
-    with st.chat_message(message["role"], avatar=avatar_icon): st.markdown(message["content"])
+    with st.chat_message(message["role"], avatar=avatar_icon): 
+        st.markdown(message["content"])
 
 #--- 4. NHẬP LIỆU VÀ XỬ LÝ LOGIC ---
 if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu internet vào đây..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user", avatar="👤"): st.markdown(user_input)
+    with st.chat_message("user", avatar="👤"): 
+        st.markdown(user_input)
 
+    # Phân loại câu hỏi thông minh tự kích hoạt tra cứu internet diện rộng
     cau_hoi_clean = user_input.lower().strip()
     keywords = ["ở đâu", "thành phố", "giá", "thời tiết", "mấy độ", "bao nhiêu", "hôm nay", "tin tức", "ai là", "sự kiện", "trường thcs", "là gì", "dịch", "nghĩa là gì"]
     need_web = any(word in cau_hoi_clean for word in keywords)
@@ -112,15 +117,16 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
                         sources.append(link)
                 status.update(label=" Tìm kiếm dữ liệu mạng thành công!", state="complete", expanded=False)
 
-    # Đóng gói prompt giữ nguyên lịch sử hội thoại thủ công cho Groq
+    # Đóng gói cấu trúc gói tin gửi lên máy chủ Groq
     messages_payload = [
         {"role": "system", "content": "Bạn là trợ lý AI thông minh, luôn trả lời bằng tiếng Việt một cách cụ thể, logic, chính xác 100%. Nếu có dữ liệu internet được cung cấp, hãy tổng hợp dựa trên dữ liệu đó."}
     ]
-    # Nạp lịch sử chat cũ
+    
+    # Nạp toàn bộ lịch sử trò chuyện cũ
     for msg in st.session_state.messages[:-1]:
         messages_payload.append({"role": msg["role"], "content": msg["content"]})
     
-    # Nạp câu hỏi hiện tại kèm thông tin mạng nếu có
+    # Nạp câu hỏi hiện tại kết hợp ngữ cảnh mạng
     current_content = user_input
     if combined_context:
         current_content = f"DỮ LIỆU INTERNET THU THẬP ĐƯỢC:\n{combined_context}\n\nCÂU HỎI NGƯỜI DÙNG: {user_input}"
@@ -129,18 +135,19 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
     with st.chat_message("assistant", avatar="🔮"):
         message_placeholder = st.empty()
         try:
-            # Gọi mô hình Llama 3.3 70B siêu mạnh của Groq
+            # Gọi bộ não mô hình Llama 3.3 siêu mạnh từ cổng Groq
             completion = st.session_state.groq_client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=messages_payload,
                 temperature=creativity,
             )
-            ai_response = completion.choices[0].message.content.strip()
+            ai_response = completion.choices.message.content.strip()
             
+            # Gắn link nguồn bài báo vào cuối văn bản trả về
             if sources:
                 ai_response += "\n\n---\n🌐 **Nguồn liên kết tra cứu:**\n" + "\n".join([f"- {src}" for src in sources])
             
-            # Hiệu ứng chạy chữ chạy mượt mà
+            # Hiệu ứng chạy chữ từng từ mượt mà của ChatGPT
             full_response = ""
             for chunk in ai_response.split(" "):
                 full_response += chunk + " "
@@ -150,4 +157,4 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
             st.session_state.messages.append({"role": "assistant", "content": full_response})
             
         except Exception as e:
-            message_placeholder.markdown(f"❌ Lỗi kết nối máy chủ Groq: {e}")
+            message_placeholder.markdown(f"❌ Lỗi máy chủ Groq: {e}. Bạn vui lòng thử nhấn Enter lại câu hỏi sau vài giây nhé!")
