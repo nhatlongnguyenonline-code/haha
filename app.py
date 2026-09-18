@@ -12,48 +12,99 @@ import streamlit as st
 
 warnings.filterwarnings("ignore")
 
-# 🎨 CHUỖI MÃ HÓA BASE64 ĐỘC LẬP - BIẾN ẢNH THÀNH CHỮ CHỐNG LỖI GÃY LINK 100%
-PHOENIX_BASE64 = "data:image/svg+xml;utf8,<svg xmlns='http://w3.org' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%231E3A8A'/><path d='M30,70 Q50,20 70,70 Q50,45 30,70' fill='%23EF4444'/><path d='M40,65 Q50,35 60,65 Q50,50 40,65' fill='%233B82F6'/><circle cx='43' cy='45' r='3' fill='white'/><circle cx='57' cy='45' r='3' fill='white'/></svg>"
-USER_BASE64 = "data:image/svg+xml;utf8,<svg xmlns='http://w3.org' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%232563EB'/><circle cx='50' cy='40' r='18' fill='white'/><path d='M20,80 Q50,50 80,80 Z' fill='white'/></svg>"
-
 #--- 1. CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE KHÓA CHÍNH GIỮA ---
 st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🤖", layout="centered")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #FFFFFF !important; color: #1F2937 !important; }
-    h1, h2, h3, p, span, label, .stMarkdown { color: #1F2937 !important; }
-    [data-testid="stSidebar"] { background-color: #F8FAFC !important; border-right: 1px solid #E2E8F0 !important; }
-    [data-testid="stSidebar"] * { color: #1F2937 !important; }
+    /* Nền tổng thể màu trắng sạch sẽ, chữ màu đen đậm rõ nét */
+    .stApp {
+        background-color: #FFFFFF !important;
+        color: #1F2937 !important;
+    }
+    
+    h1, h2, h3, p, span, label, .stMarkdown {
+        color: #1F2937 !important;
+    }
+    
+    [data-testid="stSidebar"] {
+        background-color: #F8FAFC !important;
+        border-right: 1px solid #E2E8F0 !important;
+    }
+    [data-testid="stSidebar"] * {
+        color: #1F2937 !important;
+    }
 
     /* KHÓA Ô GÕ CÂU HỎI CHÍNH GIỮA MÀN HÌNH */
     .stChatInput {
-        position: fixed !important; bottom: 30px !important; left: 50% !important;
-        transform: translateX(-50%) !important; z-index: 999 !important;
-        width: 100% !important; max-width: 550px !important;
-        display: flex !important; justify-content: center !important;
+        position: fixed !important;
+        bottom: 30px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 999 !important;
+        width: 100% !important;
+        max-width: 550px !important;
+        display: flex !important;
+        justify-content: center !important;
     }
     .stChatInput [data-testid="stChatInputCurrentContainer"] {
-        width: 100% !important; border: 2px solid #3B82F6 !important;
-        border-radius: 24px !important; background-color: #F8FAFC !important;
-        padding: 4px 10px !important; box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.15) !important;
+        width: 100% !important;
+        border: 2px solid #3B82F6 !important;
+        border-radius: 24px !important;
+        background-color: #F8FAFC !important;
+        padding: 4px 10px !important;
+        box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.15) !important;
     }
-    .stChatInput textarea { color: #1F2937 !important; font-size: 0.95rem !important; font-weight: 500 !important; }
-    .stChatInput button { background-color: #3B82F6 !important; color: white !important; border-radius: 50% !important; }
-
-    /* KHUNG TIN NHẮN CHAT BO GÓC MỀM MẠI */
-    [data-testid="stChatMessage"] { border-radius: 16px !important; margin-bottom: 16px !important; padding: 16px 20px !important; }
-    [data-testid="stChatMessageAssistant"] { background-color: #F8FAFC !important; border: 1px solid #E2E8F0 !important; }
-    [data-testid="stChatMessageUser"] { background-color: #F0F6FF !important; border: 1px solid #DBEAFE !important; }
-    
-    /* ÉP TRÒN CHO TẤT CẢ AVATAR CHỐNG LỖI */
-    [data-testid="stChatMessageAvatar"] img {
+    .stChatInput textarea {
+        color: #1F2937 !important;
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
+    }
+    .stChatInput button {
+        background-color: #3B82F6 !important;
+        color: white !important;
         border-radius: 50% !important;
-        object-fit: cover !important;
+    }
+
+    /* KHUNG TIN NHẮN CHAT BO GÓC MỀM MẠI DỄ NHÌN */
+    [data-testid="stChatMessage"] {
+        border-radius: 16px !important;
+        margin-bottom: 16px !important;
+        padding: 16px 20px !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    }
+    [data-testid="stChatMessageAssistant"] {
+        background-color: #F8FAFC !important;
+        border: 1px solid #E2E8F0 !important;
+    }
+    [data-testid="stChatMessageUser"] {
+        background-color: #F0F6FF !important;
+        border: 1px solid #DBEAFE !important;
     }
     
-    .main-title { font-size: 2.2rem; font-weight: 800; color: #1E3A8A !important; text-align: center; margin-top: 1.5rem; margin-bottom: 4px; }
-    .sub-title { text-align: center; color: #64748B !important; font-size: 0.95rem; margin-bottom: 1.5rem; }
+    /* Làm đẹp vòng tròn bọc quanh biểu tượng Emoji */
+    [data-testid="stChatMessageAvatar"] {
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 1.2rem !important;
+    }
+
+    .main-title {
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: #1E3A8A !important;
+        text-align: center;
+        margin-top: 1.5rem;
+        margin-bottom: 4px;
+    }
+    .sub-title {
+        text-align: center;
+        color: #64748B !important;
+        font-size: 0.95rem;
+        margin-bottom: 1.5rem;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -116,16 +167,16 @@ with st.sidebar:
             st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
             st.rerun()
 
-# Nạp chuỗi text Base64 vào các tin nhắn cũ
+# Nạp biểu tượng Emoji hệ thống bất tử chống gãy hình cho tin nhắn cũ
 for message in st.session_state.messages:
-    avt_source = USER_BASE64 if message["role"] == "user" else PHOENIX_BASE64
-    with st.chat_message(message["role"], avatar=avt_source): 
+    avt_emoji = "👤" if message["role"] == "user" else "🦅"
+    with st.chat_message(message["role"], avatar=avt_emoji): 
         st.markdown(message["content"])
 
-# Khung gõ nhận câu hỏi mới
+# Khung nhận câu hỏi mới
 if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user", avatar=USER_BASE64): 
+    with st.chat_message("user", avatar="👤"): 
         st.markdown(user_input)
 
     cau_hoi_clean = user_input.lower().strip()
@@ -148,7 +199,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
 
     prompt_payload = f"[HỆ THỐNG]: Dựa trên Internet: {combined_context}\nCÂU HỎI: {user_input}" if combined_context else user_input
 
-    with st.chat_message("assistant", avatar=PHOENIX_BASE64):
+    with st.chat_message("assistant", avatar="🦅"):
         message_placeholder = st.empty()
         with st.spinner("🤖 AI đang suy nghĩ..."):
             try:
