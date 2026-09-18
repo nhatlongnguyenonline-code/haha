@@ -40,19 +40,18 @@ st.markdown("""
     /* KHUNG TIN NHẮN CHAT */
     [data-testid="stChatMessage"] { border-radius: 16px !important; margin-bottom: 16px !important; padding: 16px 20px !important; }
     
-    /* 🔴 ÉP NẠP LOGO PHƯỢNG HOÀNG BẰNG CSS ĐÈ TẬN GỐC (SỬA LỖI ICON MẶC ĐỊNH) */
+    /* 🔴 ÉP NẠP LOGO PHƯỢNG HOÀNG BẰNG CSS ĐÈ TẬN GỐC */
     [data-testid="stChatMessageAssistant"] { background-color: #F8FAFC !important; border: 1px solid #E2E8F0 !important; }
     [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"] {
         border-radius: 50% !important; overflow: hidden !important; 
-        border: 2px solid #EF4444 !important; /* Viền đỏ rực rỡ */
+        border: 2px solid #EF4444 !important;
         box-shadow: 0 0 8px rgba(239, 68, 68, 0.3) !important;
         background-color: transparent !important;
     }
-    /* Ghi đè hình ảnh Phượng Hoàng vào bên trong thẻ chứa icon */
     [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"] svg, 
     [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"] div,
     [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"] span {
-        display: none !important; /* Ẩn hoàn toàn con robot màu vàng cũ */
+        display: none !important;
     }
     [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"]::after {
         content: "" !important;
@@ -73,7 +72,7 @@ st.markdown("""
     [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"] svg,
     [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"] div,
     [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"] span {
-        display: none !important; /* Ẩn mặt người màu đỏ cũ */
+        display: none !important;
     }
     [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"]::after {
         content: "ME" !important;
@@ -152,14 +151,14 @@ with st.sidebar:
             st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
             st.rerun()
 
-# Vòng lặp xuất tin nhắn cực kỳ an toàn
 for message in st.session_state.messages:
     with st.chat_message(message["role"]): 
         st.markdown(message["content"])
 
 if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user"): st.markdown(user_input)
+    with st.chat_message("user"): 
+        st.markdown(user_input)
 
     cau_hoi_clean = user_input.lower().strip()
     keywords = ["ở đâu", "thành phố", "giá", "thời tiết", "mấy độ", "bao nhiêu", "hôm nay", "tin tức", "ai là", "sự kiện", "trường thcs", "là gì", "dịch", "nghĩa là gì"]
@@ -195,9 +194,14 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                     response = st.session_state.chat_session.send_message(prompt_payload, config={"temperature": creativity})
                 
                 ai_response = response.text.strip()
-                if sources: ai_response += "\n\n---\n🌐 **Nguồn:**\n" + "\n".join([f"- {src}" for src in sources])
+                if sources: 
+                    ai_response += "\n\n---\n🌐 **Nguồn:**\n" + "\n".join([f"- {src}" for src in sources])
                 
                 full_response = ""
                 for chunk in ai_response.split(" "):
                     full_response += chunk + " "
                     time.sleep(0.01)
+                    message_placeholder.markdown(full_response + "┃")
+                message_placeholder.markdown(full_response)
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
+                except Exception as e:message_placeholder.markdown(f"❌ Hệ thống bận: {e}. Vui lòng thử lại sau vài giây.")
