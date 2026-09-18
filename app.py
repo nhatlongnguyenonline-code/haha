@@ -6,28 +6,25 @@ import time
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 from google import genai
+from google.genai import types  # Thư viện hỗ trợ nạp dữ liệu ảnh thô
+from PIL import Image  # Thư viện xử lý hình ảnh của Python
 import streamlit as st
 
 warnings.filterwarnings("ignore")
 
-#--- 1. CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE KHÓA CHÍNH GIỮA ---
-st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🤖", layout="centered")
+#--- 1. CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE HỖ TRỢ GỬI ẢNH ---
+st.set_page_config(page_title="Trợ Lý AI Toàn Năng", page_icon="🤖", layout="centered")
 
-# Nhúng mã CSS khóa chặt ô gõ câu hỏi nhỏ gọn ở chính giữa màn hình
+# Nhúng mã CSS khóa chặt ô gõ câu hỏi nhỏ gọn ở chính giữa màn hình và làm đẹp giao diện
 st.markdown("""
     <style>
-    /* Nền tổng thể trắng tinh khôi, font chữ mượt mà dịu mắt */
     .stApp {
         background-color: #FFFFFF !important;
         color: #1F2937 !important;
     }
-    
-    /* Chuyển toàn bộ màu chữ mặc định sang màu xám đen đậm sắc nét */
     h1, h2, h3, p, span, label, .stMarkdown {
         color: #1F2937 !important;
     }
-    
-    /* Cấu hình thanh Sidebar bên trái màu xám mịn thanh lịch */
     [data-testid="stSidebar"] {
         background-color: #F8FAFC !important;
         border-right: 1px solid #E2E8F0 !important;
@@ -36,64 +33,53 @@ st.markdown("""
         color: #1F2937 !important;
     }
 
-    /* 🎯 ÉP THANH NHẬP CÂU HỎI LUÔN NẰM CỐ ĐỊNH CHÍNH GIỮA MÀN HÌNH */
+    /* ĐỊNH DẠNG KHUNG VIẾT CÂU HỎI LUÔN NẰM CỐ ĐỊNH CHÍNH GIỮA MÀN HÌNH */
     .stChatInput {
         position: fixed !important;
         bottom: 30px !important;
-        left: 50% !important; /* Đẩy lùi về giữa màn hình */
-        transform: translateX(-50%) !important; /* Dịch trục cân đối tuyệt đối */
+        left: 50% !important;
+        transform: translateX(-50%) !important;
         z-index: 999 !important;
         width: 100% !important;
-        max-width: 550px !important; /* Khóa độ dài nhỏ gọn, không cho kéo dài ra hai đầu */
+        max-width: 550px !important;
         display: flex !important;
         justify-content: center !important;
     }
-    
     .stChatInput [data-testid="stChatInputCurrentContainer"] {
         width: 100% !important;
-        border: 2px solid #3B82F6 !important; /* Viền xanh dương trẻ trung */
-        border-radius: 24px !important; /* Bo cong tròn hai đầu mềm mại */
-        background-color: #F8FAFC !important; /* Nền xám trắng pha lê dịu nhẹ */
+        border: 2px solid #3B82F6 !important;
+        border-radius: 24px !important;
+        background-color: #F8FAFC !important;
         padding: 4px 10px !important;
-        box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.15), 0 8px 10px -6px rgba(59, 130, 246, 0.1) !important; /* Đổ bóng nghệ thuật tinh tế */
-        transition: all 0.3s ease !important;
-    }
-    
-    /* Hiệu ứng phát sáng nhẹ khi click chuột vào ô gõ */
-    .stChatInput [data-testid="stChatInputCurrentContainer"]:focus-within {
-        border-color: #8B5CF6 !important; /* Đổi sang viền màu tím công nghệ */
-        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2) !important;
+        box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.15) !important;
     }
     .stChatInput textarea {
         color: #1F2937 !important;
         font-size: 0.95rem !important;
         font-weight: 500 !important;
     }
-    /* Đổi màu nút bấm gửi tin nhắn mũi tên */
     .stChatInput button {
         background-color: #3B82F6 !important;
         color: white !important;
         border-radius: 50% !important;
     }
 
-    /* ĐỊNH DẠNG KHUNG TIN NHẮN CHAT SẠCH SẼ */
+    /* ĐỊNH DẠNG KHUNG TIN NHẮN CHAT BONG BÓNG */
     [data-testid="stChatMessage"] {
-        background-color: #F1F5F9 !important; /* Hộp thoại AI màu xám nhạt nhẹ nhàng */
+        background-color: #F1F5F9 !important;
         border-radius: 16px !important;
         margin-bottom: 12px !important;
         padding: 12px 16px !important;
     }
     [data-testid="stChatMessageUser"] {
-        background-color: #EFF6FF !important; /* Hộp thoại Bạn màu xanh dương pastel thanh lịch */
+        background-color: #EFF6FF !important;
         border: 1px solid #BFDBFE !important;
     }
 
-    /* TIÊU ĐỀ NGHỆ THUẬT PHONG CÁCH APPLE */
     .main-title {
         font-size: 2.2rem;
         font-weight: 800;
-        letter-spacing: -0.5px;
-        color: #1E3A8A !important; /* Xanh hoàng gia quyền lực */
+        color: #1E3A8A !important;
         text-align: center;
         margin-top: 1.5rem;
         margin-bottom: 4px;
@@ -102,13 +88,13 @@ st.markdown("""
         text-align: center;
         color: #64748B !important;
         font-size: 0.95rem;
-        margin-bottom: 2.5rem;
+        margin-bottom: 1.5rem;
     }
     </style>
 """, unsafe_allow_html=True)
 
 st.markdown('<h1 class="main-title">🤖 TRỢ LÝ AI TOÀN NĂNG</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-title">Hệ thống đọc hiểu kiến thức và tra cứu thông tin Internet diện rộng</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">Hệ thống đọc hiểu kiến thức, phân tích hình ảnh và tra cứu Internet</p>', unsafe_allow_html=True)
 
 # Lấy API Key từ mục Secrets bảo mật của Streamlit Cloud
 try:
@@ -156,6 +142,18 @@ with st.sidebar:
     st.markdown("### ⚙️ CÀI ĐẶT CHATBOT")
     creativity = st.slider("🧠 Độ nhạy bén / Sáng tạo", min_value=0.1, max_value=1.0, value=0.3, step=0.1)
     st.markdown("---")
+    
+    # 📸 KHUNG TẢI ẢNH ĐƯỢC ĐƯA VÀO THANH SIDEBAR ĐỂ KHÔNG BỊ PHÌNH MÀN HÌNH CHÍNH
+    st.markdown("### 📸 PHÂN TÍCH HÌNH ẢNH")
+    uploaded_file = st.file_uploader("Tải ảnh lên tại đây (.png, .jpg, .jpeg)...", type=["png", "jpg", "jpeg"])
+    
+    if uploaded_file:
+        # Hiển thị ảnh thu nhỏ xem trước (Preview) ở thanh bên
+        image_preview = Image.open(uploaded_file)
+        st.image(image_preview, caption="Ảnh bạn đã chọn", use_container_width=True)
+        st.info("💡 Bây giờ bạn hãy gõ câu hỏi vào ô chat chính để yêu cầu AI phân tích bức ảnh này nhé!")
+
+    st.markdown("---")
     st.markdown("### 📂 NHẬT KÝ")
     if st.session_state.messages:
         chat_history_text = "NHẬT KÝ HỘI THOẠI AI\n" + "="*50 + "\n"
@@ -167,8 +165,6 @@ with st.sidebar:
             st.session_state.messages = []
             st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
             st.rerun()
-    else:
-        st.caption("Chưa có đoạn chat nào để tải về.")
 
 # Hiển thị lịch sử bong bóng chat cũ lên màn hình web
 for message in st.session_state.messages:
@@ -177,11 +173,13 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 #--- 4. KHUNG NHẬP LIỆU VÀ XỬ LÝ LOGIC ---
-if user_input := st.chat_input("Nhập câu hỏi của bạn tại đây..."):
+if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
+    # Hiển thị câu hỏi của bạn
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user", avatar="👤"): 
         st.markdown(user_input)
 
+    # Phân loại câu hỏi tra mạng internet diện rộng
     cau_hoi_clean = user_input.lower().strip()
     keywords = ["ở đâu", "thành phố", "giá", "thời tiết", "mấy độ", "bao nhiêu", "hôm nay", "tin tức", "ai là", "sự kiện", "trường thcs", "là gì", "dịch", "nghĩa là gì"]
     need_web = any(word in cau_hoi_clean for word in keywords)
@@ -189,7 +187,8 @@ if user_input := st.chat_input("Nhập câu hỏi của bạn tại đây..."):
     combined_context = ""
     sources = []
     
-    if need_web:
+    # Chỉ tra cứu mạng khi người dùng không gửi kèm hình ảnh phân tích
+    if need_web and not uploaded_file:
         with st.status("🔍 Đang kết nối mạng và tìm kiếm thông tin thực tế...", expanded=False) as status:
             web_links = search_the_web_ddg(user_input)
             if web_links:
@@ -200,35 +199,48 @@ if user_input := st.chat_input("Nhập câu hỏi của bạn tại đây..."):
                         sources.append(link)
                 status.update(label=" Đọc dữ liệu mạng thành công!", state="complete")
 
+    # Đóng gói Prompt xử lý
     if combined_context:
-        prompt = f"""
-        [HỆ THỐNG]: Dưới đây là thông tin thực tế mới nhất từ Internet. Hãy đọc hiểu và trả lời cụ thể câu hỏi của người dùng bằng tiếng Việt. Tuyệt đối không được bịa đặt thông tin.
+        prompt_payload = f"""
+        [HỆ THỐNG]: Dưới đây là thông tin thực tế từ Internet. Hãy đọc hiểu và trả lời cụ thể câu hỏi của người dùng bằng tiếng Việt.
         DỮ LIỆU INTERNET: {combined_context}
         CÂU HỎI NGƯỜI DÙNG: {user_input}
         """
     else:
-        prompt = user_input
+        prompt_payload = user_input
 
     with st.chat_message("assistant", avatar="🤖"):
         message_placeholder = st.empty()
-        try:
-            response = st.session_state.chat_session.send_message(
-                prompt,
-                config={"temperature": creativity}
-            )
-            ai_response = response.text.strip()
-            
-            if sources:
-                ai_response += "\n\n---\n🌐 **Nguồn liên kết tra cứu:**\n" + "\n".join([f"- {src}" for src in sources])
-            
-            full_response = ""
-            for chunk in ai_response.split(" "):
-                full_response += chunk + " "
-                time.sleep(0.02)
-                message_placeholder.markdown(full_response + "▌")
-            message_placeholder.markdown(full_response)
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
-            
-        except Exception as e:
-            error_msg = f"❌ Hệ thống bận: {e}. Bạn vui lòng nhấn Enter câu hỏi lại sau vài giây nhé!"
-            message_placeholder.markdown(error_msg)
+        with st.spinner("🤖 AI đang suy nghĩ câu trả lời..."):
+            try:
+                # --- NẾU NGƯỜI DÙNG CÓ GỬI KÈM ẢNH ---
+                if uploaded_file:
+                    raw_image = Image.open(uploaded_file)
+                    
+                    # Gọi mô hình thông qua API sinh nội dung đa phương tiện trực tiếp
+                    response = st.session_state.ai_client.models.generate_content(
+                        model='gemini-3.6-flash',
+                        contents=[raw_image, prompt_payload],
+                        config=types.GenerateContentConfig(temperature=creativity)
+                    )
+                # --- NẾU LÀ CHAT VĂN BẢN THƯỜNG (Giữ nguyên bộ nhớ phiên hội thoại) ---
+                else:
+                    response = st.session_state.chat_session.send_message(
+                        prompt_payload,
+                        config={"temperature": creativity}
+                    )
+                
+                ai_response = response.text.strip()
+                
+                if sources:
+                    ai_response += "\n\n---\n🌐 **Nguồn liên kết tra cứu:**\n" + "\n".join([f"- {src}" for src in sources])
+                
+                # Hiệu ứng chạy chữ mượt mà
+                full_response = ""
+                for chunk in ai_response.split(" "):
+                    full_response += chunk + " "
+                    time.sleep(0.02)
+                    message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
+                
