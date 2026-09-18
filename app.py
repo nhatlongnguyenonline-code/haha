@@ -23,9 +23,8 @@ st.markdown("""
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
-        width: 25px !important; /* Tăng độ rộng để hiển thị đủ 5 sọc màu */
+        width: 25px !important;
         height: 100vh !important;
-        /* Sọc bên trái: Chuyển sắc từ Đỏ lửa sang Tím huyền ảo mềm mại */
         background: linear-gradient(180deg, #EF4444, #F97316, #FBBF24, #3B82F6, #8B5CF6) !important;
         z-index: 9999 !important;
         box-shadow: 3px 0 15px rgba(239, 68, 68, 0.2) !important;
@@ -35,9 +34,8 @@ st.markdown("""
         position: fixed !important;
         top: 0 !important;
         right: 0 !important;
-        width: 25px !important; /* Tăng độ rộng để hiển thị đủ 5 sọc màu */
+        width: 25px !important;
         height: 100vh !important;
-        /* Sọc bên phải: Chuyển sắc ngược lại từ Tím sang Đỏ nghệ thuật */
         background: linear-gradient(180deg, #8B5CF6, #3B82F6, #FBBF24, #F97316, #EF4444) !important;
         z-index: 9999 !important;
         box-shadow: -3px 0 15px rgba(59, 130, 246, 0.15) !important;
@@ -55,7 +53,6 @@ st.markdown("""
         margin-bottom: 16px !important;
         padding: 16px 20px !important;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important;
-        transition: all 0.3s ease !important;
     }
     [data-testid="stChatMessageAssistant"] {
         background-color: #FFFDFA !important;
@@ -88,7 +85,7 @@ st.markdown("""
     }
     [data-testid="stChatMessageAvatar"] { border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.2rem !important; }
 
-    /* TIÊU ĐỀ CHUYỂM MÀU GRADIENT PHOENIX */
+    /* TIÊU ĐỀ CHUYỂN MÀU GRADIENT PHOENIX */
     .premium-title-container { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 1.5rem; margin-bottom: 4px; }
     .premium-logo { font-size: 2.5rem; }
     .premium-text { font-size: 2.3rem; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(90deg, #EF4444, #3B82F6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
@@ -108,9 +105,11 @@ except:
 if "ai_client" not in st.session_state:
     try:
         st.session_state.ai_client = genai.Client(api_key=API_KEY)
+        st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
     except Exception as e:
         st.error(f"Lỗi khởi tạo bộ não AI: {e}")
-def search_the_web_ddg(query, max_results=1):
+def search_the_web_ddg(query, max_results=3):
+    """Khôi phục: Tự động tra cứu tìm kiếm 3 nguồn web tham khảo phong phú như ban đầu."""
     urls = []
     try:
         with DDGS() as ddgs:
@@ -122,11 +121,11 @@ def search_the_web_ddg(query, max_results=1):
 def extract_web_content(url):
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        response = requests.get(url, headers=headers, timeout=3)
+        response = requests.get(url, headers=headers, timeout=4)
         if response.status_code == 200:
             soup = BeautifulSoup(response.content, 'html.parser')
             for element in soup(["script", "style", "nav", "footer", "header", "aside", "form"]): element.decompose()
-            return ' '.join(soup.get_text().split())[:1200]
+            return ' '.join(soup.get_text().split())[:1500]
     except: pass
     return ""
 
@@ -150,6 +149,7 @@ with st.sidebar:
         st.download_button(label="📥 Tải lịch sử chat (.txt)", data=chat_history_text, file_name="AI_Chat_History.txt", mime="text/plain", use_container_width=True)
         if st.button("🗑️ Xóa cuộc trò chuyện", use_container_width=True):
             st.session_state.messages = []
+            st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
             st.rerun()
 
 for message in st.session_state.messages:
@@ -168,50 +168,37 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
     sources = []
     
     if need_web and not uploaded_file:
-        with st.status("🔍 Đang tìm kiếm thông tin thực tế...", expanded=False) as status:
+        with st.status("🔍 Đang kết nối mạng và tra cứu thông tin thực tế rộng...", expanded=False) as status:
             web_links = search_the_web_ddg(user_input)
             if web_links:
                 for link in web_links:
                     content = extract_web_content(link)
                     if content:
-                        combined_context += f"\n--- Nguồn: {link} ---\n{content}\n"
+                        combined_context += f"\n--- Nguồn tham khảo: {link} ---\n{content}\n"
                         sources.append(link)
                 status.update(label=" Đọc dữ liệu thành công!", state="complete")
 
-    prompt_payload = f"[HỆ THỐNG]: Dựa trên Internet: {combined_context}\nCÂU HỎI: {user_input}" if combined_context else user_input
+    prompt_payload = f"[HỆ THỐNG]: Dựa trên dữ liệu thực tế Internet: {combined_context}\nCÂU HỎI NGƯỜI DÙNG: {user_input}" if combined_context else user_input
 
     with st.chat_message("assistant", avatar="🐦‍🔥"):
         message_placeholder = st.empty()
         with st.spinner("🤖 AI đang suy nghĩ..."):
-            
-            models_to_try = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.0-flash"]
-            
-            ai_response = ""
-            for model_name in models_to_try:
-                try:
-                    if uploaded_file:
-                        response = st.session_state.ai_client.models.generate_content(
-                            model=model_name,
-                            contents=[Image.open(uploaded_file), prompt_payload],
-                            config=types.GenerateContentConfig(temperature=creativity)
-                        )
-                    else:
-                        response = st.session_state.ai_client.models.generate_content(
-                            model=model_name,
-                            contents=[prompt_payload],
-                            config=types.GenerateContentConfig(temperature=creativity)
-                        )
-                    ai_response = response.text.strip()
-                    if ai_response:
-                        break 
-                except Exception as model_err:
-                    continue 
-            
-            if ai_response:
+            try:
+                if uploaded_file:
+                    response = st.session_state.ai_client.models.generate_content(
+                        model='gemini-3.6-flash',
+                        contents=[Image.open(uploaded_file), prompt_payload],
+                        config=types.GenerateContentConfig(temperature=creativity)
+                    )
+                else:
+                    response = st.session_state.chat_session.send_message(prompt_payload, config={"temperature": creativity})
+                
+                ai_response = response.text.strip()
                 if sources: 
-                    ai_response += "\n\n---\n🌐 **Nguồn:**\n" + "\n".join([f"- {src}" for src in sources])
+                    ai_response += "\n\n---\n🌐 **Nguồn liên kết tham cứu:**\n" + "\n".join([f"- {src}" for src in sources])
+                
                 message_placeholder.markdown(ai_response)
                 st.session_state.messages.append({"role": "assistant", "content": ai_response})
                 st.rerun()
-            else:
-                message_placeholder.markdown("❌ Máy chủ Google Gemini hiện đang quá tải. Bạn vui lòng thử lại sau vài giây nhé!")
+            except Exception as e:
+                message_placeholder.markdown(f"❌ Hệ thống bận: {e}. Bạn vui lòng thử gõ lại câu hỏi nhé!")
