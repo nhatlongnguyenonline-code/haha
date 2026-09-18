@@ -13,17 +13,24 @@ import streamlit as st
 warnings.filterwarnings("ignore")
 
 #--- 1. CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE KHÓA CHÍNH GIỮA ---
-st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🤖", layout="centered")
+st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🐦‍🔥", layout="centered")
 
 st.markdown("""
     <style>
-    /* Nền tổng thể màu trắng sạch sẽ, chữ màu đen đậm rõ nét */
+    /* Ẩn hoàn toàn icon robot đen mặc định bên cạnh tiêu đề chính h1 */
+    [data-testid="stHeaderHeading"] svg, 
+    [data-testid="stHeaderHeading"] div,
+    [data-testid="stElementContainer"] h1 svg {
+        display: none !important;
+    }
+    
+    /* Làm sạch nền và đổi màu chữ tổng thể */
     .stApp {
         background-color: #FFFFFF !important;
         color: #1F2937 !important;
     }
     
-    h1, h2, h3, p, span, label, .stMarkdown {
+    h2, h3, p, span, label, .stMarkdown {
         color: #1F2937 !important;
     }
     
@@ -82,7 +89,6 @@ st.markdown("""
         border: 1px solid #DBEAFE !important;
     }
     
-    /* Làm đẹp vòng tròn bọc quanh biểu tượng Emoji */
     [data-testid="stChatMessageAvatar"] {
         border-radius: 50% !important;
         display: flex !important;
@@ -91,13 +97,26 @@ st.markdown("""
         font-size: 1.2rem !important;
     }
 
-    .main-title {
-        font-size: 2.2rem;
-        font-weight: 800;
-        color: #1E3A8A !important;
-        text-align: center;
+    /* 🎨 CSS NGHỆ THUẬT: ĐỔI MÀU GRADIENT VÀ THÊM LOGO PHƯỢNG HOÀNG LỬA CHO TIÊU ĐỀ */
+    .premium-title-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
         margin-top: 1.5rem;
         margin-bottom: 4px;
+    }
+    .premium-logo {
+        font-size: 2.5rem; /* Kích thước logo Phượng hoàng to rõ */
+    }
+    .premium-text {
+        font-size: 2.3rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        /* Tạo hiệu ứng chuyển màu Đỏ Phượng Hoàng sang Xanh Dương Công Nghệ */
+        background: linear-gradient(90deg, #EF4444, #3B82F6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
     .sub-title {
         text-align: center;
@@ -108,15 +127,18 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="main-title">🤖 TRỢ LÝ AI TOÀN NĂNG</h1>', unsafe_allow_html=True)
+# Khởi dựng Khối tiêu đề tùy biến nghệ thuật cao cấp mới
+st.markdown('<div class="premium-title-container"><span class="premium-logo">🐦‍🔥</span><span class="premium-text">TRỢ LÝ AI TOÀN NĂNG</span></div>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Hệ thống đọc hiểu kiến thức, phân tích hình ảnh và tra cứu Internet</p>', unsafe_allow_html=True)
 
+# Lấy API Key từ mục Secrets bảo mật của Streamlit Cloud
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
 except:
     st.warning("⚠️ Hệ thống đang chờ cấu hình mã GEMINI_API_KEY ngầm trong mục Secrets!")
     st.stop()
 
+# Khởi tạo bộ não AI Client thế hệ mới bằng SDK google-genai
 if "ai_client" not in st.session_state:
     try:
         st.session_state.ai_client = genai.Client(api_key=API_KEY)
@@ -167,13 +189,11 @@ with st.sidebar:
             st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
             st.rerun()
 
-# Đổi sang emoji Phượng hoàng lửa tái sinh (🐦‍🔥) cho tin nhắn cũ
 for message in st.session_state.messages:
     avt_emoji = "👤" if message["role"] == "user" else "🐦‍🔥"
     with st.chat_message(message["role"], avatar=avt_emoji): 
         st.markdown(message["content"])
 
-# Khung nhận câu hỏi mới
 if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user", avatar="👤"): 
@@ -199,7 +219,6 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
 
     prompt_payload = f"[HỆ THỐNG]: Dựa trên Internet: {combined_context}\nCÂU HỎI: {user_input}" if combined_context else user_input
 
-    # Đổi sang emoji Phượng hoàng lửa tái sinh (🐦‍🔥) cho câu trả lời mới tinh
     with st.chat_message("assistant", avatar="🐦‍🔥"):
         message_placeholder = st.empty()
         with st.spinner("🤖 AI đang suy nghĩ..."):
