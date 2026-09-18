@@ -17,7 +17,7 @@ st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🐦‍🔥
 
 st.markdown("""
     <style>
-    /* Ẩn hoàn toàn icon robot đen mặc định bên cạnh tiêu đề chính h1 */
+    /* Ẩn hoàn toàn icon robot đen mặc định bên cạnh tiêu đề chính */
     [data-testid="stHeaderHeading"] svg, 
     [data-testid="stHeaderHeading"] div,
     [data-testid="stElementContainer"] h1 svg {
@@ -97,7 +97,7 @@ st.markdown("""
         font-size: 1.2rem !important;
     }
 
-    /* 🎨 CSS NGHỆ THUẬT: ĐỔI MÀU GRADIENT VÀ THÊM LOGO PHƯỢNG HOÀNG LỬA CHO TIÊU ĐỀ */
+    /* TIÊU ĐỀ NGHỆ THUẬT VÀ LOGO PHƯỢNG HOÀNG LỬA CHUYỂN MÀU GRADIENT */
     .premium-title-container {
         display: flex;
         align-items: center;
@@ -107,13 +107,12 @@ st.markdown("""
         margin-bottom: 4px;
     }
     .premium-logo {
-        font-size: 2.5rem; /* Kích thước logo Phượng hoàng to rõ */
+        font-size: 2.5rem;
     }
     .premium-text {
         font-size: 2.3rem;
         font-weight: 800;
         letter-spacing: -0.5px;
-        /* Tạo hiệu ứng chuyển màu Đỏ Phượng Hoàng sang Xanh Dương Công Nghệ */
         background: linear-gradient(90deg, #EF4444, #3B82F6);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -127,7 +126,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Khởi dựng Khối tiêu đề tùy biến nghệ thuật cao cấp mới
 st.markdown('<div class="premium-title-container"><span class="premium-logo">🐦‍🔥</span><span class="premium-text">TRỢ LÝ AI TOÀN NĂNG</span></div>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Hệ thống đọc hiểu kiến thức, phân tích hình ảnh và tra cứu Internet</p>', unsafe_allow_html=True)
 
@@ -138,7 +136,7 @@ except:
     st.warning("⚠️ Hệ thống đang chờ cấu hình mã GEMINI_API_KEY ngầm trong mục Secrets!")
     st.stop()
 
-# Khởi tạo bộ não AI Client thế hệ mới bằng SDK google-genai
+# Khởi tạo bộ não sử dụng DUY NHẤT mô hình bắt buộc gemini-3.6-flash
 if "ai_client" not in st.session_state:
     try:
         st.session_state.ai_client = genai.Client(api_key=API_KEY)
@@ -146,7 +144,8 @@ if "ai_client" not in st.session_state:
     except Exception as e:
         st.error(f"Lỗi bộ não AI: {e}")
 
-def search_the_web_ddg(query, max_results=3):
+def search_the_web_ddg(query, max_results=1):
+    """Tối ưu hóa: Chỉ lấy 1 kết quả tốt nhất để tăng tốc độ phản hồi tối đa."""
     urls = []
     try:
         with DDGS() as ddgs:
@@ -157,12 +156,13 @@ def search_the_web_ddg(query, max_results=3):
 
 def extract_web_content(url):
     try:
+        # Cấu hình timeout ngắn (3 giây) để bỏ qua các trang tải chậm, triệt tiêu xoay vòng
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        response = requests.get(url, headers=headers, timeout=5)
+        response = requests.get(url, headers=headers, timeout=3)
         if response.status_code == 200:
             soup = BeautifulSoup(response.content, 'html.parser')
             for element in soup(["script", "style", "nav", "footer", "header", "aside", "form"]): element.decompose()
-            return ' '.join(soup.get_text().split())[:1500]
+            return ' '.join(soup.get_text().split())[:1200]
     except: pass
     return ""
 
