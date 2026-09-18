@@ -10,10 +10,10 @@ import streamlit as st
 
 warnings.filterwarnings("ignore")
 
-#--- 1. CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE THU GỌN NGHỆ THUẬT ---
+#--- 1. CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE KHÓA CHÍNH GIỮA ---
 st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🤖", layout="centered")
 
-# Nhúng mã CSS thiết kế lại thanh nhập liệu nhỏ gọn nghệ thuật cao cấp
+# Nhúng mã CSS khóa chặt ô gõ câu hỏi nhỏ gọn ở chính giữa màn hình
 st.markdown("""
     <style>
     /* Nền tổng thể trắng tinh khôi, font chữ mượt mà dịu mắt */
@@ -36,20 +36,21 @@ st.markdown("""
         color: #1F2937 !important;
     }
 
-    /* 🎨 TRANG TRÍ THANH NHẬP CÂU HỎI THU GỌN NGHỆ THUẬT */
+    /* 🎯 ÉP THANH NHẬP CÂU HỎI LUÔN NẰM CỐ ĐỊNH CHÍNH GIỮA MÀN HÌNH */
     .stChatInput {
-        position: fixed;
-        bottom: 30px;
-        left: 0;
-        right: 0;
-        z-index: 999;
-        display: flex;
-        justify-content: center;
+        position: fixed !important;
+        bottom: 30px !important;
+        left: 50% !important; /* Đẩy lùi về giữa màn hình */
+        transform: translateX(-50%) !important; /* Dịch trục cân đối tuyệt đối */
+        z-index: 999 !important;
+        width: 100% !important;
+        max-width: 550px !important; /* Khóa độ dài nhỏ gọn, không cho kéo dài ra hai đầu */
+        display: flex !important;
+        justify-content: center !important;
     }
+    
     .stChatInput [data-testid="stChatInputCurrentContainer"] {
-        max-width: 650px !important; /* Độ rộng thu gọn nhỏ vừa vặn cực đẹp */
-        width: 65% !important;
-        margin: 0 auto !important;
+        width: 100% !important;
         border: 2px solid #3B82F6 !important; /* Viền xanh dương trẻ trung */
         border-radius: 24px !important; /* Bo cong tròn hai đầu mềm mại */
         background-color: #F8FAFC !important; /* Nền xám trắng pha lê dịu nhẹ */
@@ -57,6 +58,7 @@ st.markdown("""
         box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.15), 0 8px 10px -6px rgba(59, 130, 246, 0.1) !important; /* Đổ bóng nghệ thuật tinh tế */
         transition: all 0.3s ease !important;
     }
+    
     /* Hiệu ứng phát sáng nhẹ khi click chuột vào ô gõ */
     .stChatInput [data-testid="stChatInputCurrentContainer"]:focus-within {
         border-color: #8B5CF6 !important; /* Đổi sang viền màu tím công nghệ */
@@ -219,7 +221,6 @@ if user_input := st.chat_input("Nhập câu hỏi của bạn tại đây..."):
             if sources:
                 ai_response += "\n\n---\n🌐 **Nguồn liên kết tra cứu:**\n" + "\n".join([f"- {src}" for src in sources])
             
-            # Hiệu ứng gõ chữ từng từ mượt mà trực quan màu đen sắc nét
             full_response = ""
             for chunk in ai_response.split(" "):
                 full_response += chunk + " "
