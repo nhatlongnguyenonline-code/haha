@@ -249,5 +249,5 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                         prompt_payload,
                         config={"temperature": creativity}
                     )
-                if sources:ai_response += "\n\n---\n🌐 Nguồn liên kết tra cứu:\n" + "\n".join([f"- {src}" for src in sources])full_response = ""for chunk in ai_response.split(" "):full_response += chunk + " "time.sleep(0.02)message_placeholder.markdown(full_response + "▌")message_placeholder.markdown(full_response)st.session_state.messages.append({"role": "assistant", "content": full_response})except Exception as e:error_msg = f"❌ Hệ thống phản hồi chậm hoặc hết hạn mức API: {e}. Bạn vui lòng thử lại sau vài giây nhé!"message_placeholder.markdown(error_msg)
+                
                 ai_response = response.text.strip()
