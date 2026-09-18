@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 #--- 1. CẤU HÌNH GIAO DIỆN ĐỒ HỌA CAO CẤP ---
 st.set_page_config(page_title="CyberChat Groq AI", page_icon="🔮", layout="centered")
 
-# Nhúng mã CSS làm đẹp bong bóng chat và giao diện màu tối sang trọng
+# Nhúng mã CSS làm đẹp giao diện màu tối sang trọng
 st.markdown("""
     <style>
     .stApp { background-color: #0E1117; color: #E2E8F0; }
@@ -29,7 +29,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<h1 class="main-title">🔮 CYBERCHAT GROQ BẤT TỬ</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-title">Trợ lý AI siêu tốc sử dụng bộ não Llama 3.1 kết hợp tìm kiếm Internet</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">Trợ lý AI siêu tốc sử dụng bộ não Llama thế hệ mới kết hợp tìm kiếm Internet</p>', unsafe_allow_html=True)
 
 # Lấy API Key từ mục Secrets bảo mật của Streamlit Cloud
 try:
@@ -133,16 +133,31 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
 
     with st.chat_message("assistant", avatar="🔮"):
         message_placeholder = st.empty()
-        try:
-            # Sử dụng mô hình llama-3.1-8b-instant mở vĩnh viễn cho tài khoản miễn phí
-            completion = st.session_state.groq_client.chat.completions.create(
-                model="llama-3.1-8b-instant",
-                messages=messages_payload,
-                temperature=creativity,
-            )
-            ai_response = completion.choices.message.content.strip()
-            
-            # Gắn link nguồn bài báo vào cuối văn bản trả về
+        
+        # Danh sách các mô hình hoạt động tốt nhất hiện tại của Groq để quét dự phòng chống lỗi 404
+        available_models = [
+            "llama-3.3-70b-specdec",
+            "llama-3.2-11b-vision-preview",
+            "gemma2-9b-it",
+            "llama3-8b-8192"
+        ]
+        
+        ai_response = ""
+        # Thử chạy từng mô hình, nếu lỗi tự nhảy sang mô hình tiếp theo
+        for model_name in available_models:
+            try:
+                completion = st.session_state.groq_client.chat.completions.create(
+                    model=model_name,
+                    messages=messages_payload,
+                    temperature=creativity,
+                )
+                ai_response = completion.choices.message.content.strip()
+                break # Nếu thành công thì ngắt vòng lặp ngay
+            except Exception as model_error:
+                continue # Nếu mô hình bị 404 hoặc bận, tự động nhảy sang mô hình tiếp theo trong danh sách
+                
+        if ai_response:
+            # Gắn link nguồn bài báo vào cuối văn bản trả về nếu có tìm kiếm mạng
             if sources:
                 ai_response += "\n\n---\n🌐 **Nguồn liên kết tra cứu:**\n" + "\n".join([f"- {src}" for src in sources])
             
@@ -154,6 +169,5 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
                 message_placeholder.markdown(full_response + "▌")
             message_placeholder.markdown(full_response)
             st.session_state.messages.append({"role": "assistant", "content": full_response})
-            
-        except Exception as e:
-            message_placeholder.markdown(f"❌ Lỗi máy chủ Groq: {e}. Bạn vui lòng thử nhấn Enter lại câu hỏi sau vài giây nhé!")
+        else:
+            message_placeholder.markdown("❌ Máy chủ Groq hiện tại đang bảo trì tất cả các dòng mô hình miễn phí hoặc API Key bị cấu hình sai. Bạn vui lòng kiểm tra lại Key trong mục Secrets nhé!")
