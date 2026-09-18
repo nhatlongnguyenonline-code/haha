@@ -1,4 +1,3 @@
-groq
 duckduckgo_search
 beautifulsoup4
 requests
