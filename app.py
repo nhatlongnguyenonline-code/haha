@@ -40,20 +40,52 @@ st.markdown("""
     /* KHUNG TIN NHẮN CHAT */
     [data-testid="stChatMessage"] { border-radius: 16px !important; margin-bottom: 16px !important; padding: 16px 20px !important; }
     
-    /* 🔴 THAY AVATAR PHƯỢNG HOÀNG BẰNG CSS NGẦM CHO AI TRỢ LÝ (SỬA LỖI MEDIA 100%) */
+    /* 🔴 ÉP NẠP LOGO PHƯỢNG HOÀNG BẰNG CSS ĐÈ TẬN GỐC (SỬA LỖI ICON MẶC ĐỊNH) */
     [data-testid="stChatMessageAssistant"] { background-color: #F8FAFC !important; border: 1px solid #E2E8F0 !important; }
     [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"] {
-        border-radius: 50% !important; overflow: hidden !important; border: 1.5px solid #EF4444 !important; box-shadow: 0 0 8px rgba(239, 68, 68, 0.2) !important;
+        border-radius: 50% !important; overflow: hidden !important; 
+        border: 2px solid #EF4444 !important; /* Viền đỏ rực rỡ */
+        box-shadow: 0 0 8px rgba(239, 68, 68, 0.3) !important;
+        background-color: transparent !important;
+    }
+    /* Ghi đè hình ảnh Phượng Hoàng vào bên trong thẻ chứa icon */
+    [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"] svg, 
+    [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"] div,
+    [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"] span {
+        display: none !important; /* Ẩn hoàn toàn con robot màu vàng cũ */
+    }
+    [data-testid="stChatMessageAssistant"] [data-testid="stChatMessageAvatar"]::after {
+        content: "" !important;
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
         background-image: url("https://freepik.com") !important;
-        background-size: cover !important; background-position: center !important;
-        color: transparent !important; /* Giấu icon mặc định cũ */
+        background-size: cover !important;
+        background-position: center !important;
     }
     
-    /* 🔵 THAY AVATAR GRADIENT CHO NGƯỜI DÙNG BẰNG CSS NGẦM */
+    /* 🔵 ÉP NẠP LOGO NGƯỜI DÙNG BẰNG GRADIENT CAO CẤP */
     [data-testid="stChatMessageUser"] { background-color: #F0F6FF !important; border: 1px solid #DBEAFE !important; }
     [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"] { 
+        border-radius: 50% !important; overflow: hidden !important;
+        border: 2px solid #2563EB !important;
+    }
+    [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"] svg,
+    [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"] div,
+    [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"] span {
+        display: none !important; /* Ẩn mặt người màu đỏ cũ */
+    }
+    [data-testid="stChatMessageUser"] [data-testid="stChatMessageAvatar"]::after {
+        content: "ME" !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+        height: 100% !important;
         background: linear-gradient(135deg, #3B82F6, #1D4ED8) !important; 
-        color: white !important; font-weight: bold !important; border-radius: 50% !important; 
+        color: white !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
     }
     
     .main-title { font-size: 2.2rem; font-weight: 800; color: #1E3A8A !important; text-align: center; margin-top: 1.5rem; margin-bottom: 4px; }
@@ -120,7 +152,7 @@ with st.sidebar:
             st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
             st.rerun()
 
-# Gọi lệnh thuần túy không chứa tham số avatar để triệt tiêu lỗi FileNotFoundError vĩnh viễn
+# Vòng lặp xuất tin nhắn cực kỳ an toàn
 for message in st.session_state.messages:
     with st.chat_message(message["role"]): 
         st.markdown(message["content"])
@@ -169,8 +201,3 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                 for chunk in ai_response.split(" "):
                     full_response += chunk + " "
                     time.sleep(0.01)
-                    message_placeholder.markdown(full_response + "▌")
-                message_placeholder.markdown(full_response)
-                st.session_state.messages.append({"role": "assistant", "content": full_response})
-            except Exception as e:
-                message_placeholder.markdown(f"❌ Hệ thống bận: {e}. Vui lòng thử lại sau vài giây.")
