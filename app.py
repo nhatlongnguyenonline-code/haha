@@ -14,7 +14,6 @@ warnings.filterwarnings("ignore")
 st.set_page_config(page_title="CyberChat Groq AI", page_icon="🔮", layout="centered")
 
 # Nhúng mã CSS làm đẹp bong bóng chat và giao diện màu tối sang trọng
-# Đã sửa lỗi tham số unsafe_allow_html chuẩn xác 100%
 st.markdown("""
     <style>
     .stApp { background-color: #0E1117; color: #E2E8F0; }
@@ -30,7 +29,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<h1 class="main-title">🔮 CYBERCHAT GROQ BẤT TỬ</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-title">Trợ lý AI siêu tốc sử dụng bộ não Llama 3.3 kết hợp tìm kiếm Internet</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">Trợ lý AI siêu tốc sử dụng bộ não Llama 3.1 kết hợp tìm kiếm Internet</p>', unsafe_allow_html=True)
 
 # Lấy API Key từ mục Secrets bảo mật của Streamlit Cloud
 try:
@@ -135,9 +134,9 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu tra cứu in
     with st.chat_message("assistant", avatar="🔮"):
         message_placeholder = st.empty()
         try:
-            # Gọi bộ não mô hình Llama 3.3 siêu mạnh từ cổng Groq
+            # Sử dụng mô hình llama-3.1-8b-instant mở vĩnh viễn cho tài khoản miễn phí
             completion = st.session_state.groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="llama-3.1-8b-instant",
                 messages=messages_payload,
                 temperature=creativity,
             )
