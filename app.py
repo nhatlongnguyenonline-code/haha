@@ -17,6 +17,31 @@ st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🐦‍🔥
 
 st.markdown("""
     <style>
+    /* 🎨 TRANG TRÍ HAI DẢI VIỀN XANH ĐỎ CHẠY DỌC ĐỐI XỨNG Ở HAI BÊN MÀN HÌNH */
+    .stApp::before {
+        content: "" !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 8px !important; /* Độ rộng của thanh bên trái */
+        height: 100vh !important;
+        background: linear-gradient(180deg, #EF4444, #3B82F6) !important; /* Đỏ sang Xanh dương */
+        z-index: 9999 !important;
+        box-shadow: 2px 0 10px rgba(239, 68, 68, 0.2) !important;
+    }
+    .stApp::after {
+        content: "" !important;
+        position: fixed !important;
+        top: 0 !important;
+        right: 0 !important;
+        width: 8px !important; /* Độ rộng của thanh bên phải */
+        height: 100vh !important;
+        background: linear-gradient(180deg, #3B82F6, #EF4444) !important; /* Xanh dương sang Đỏ ngược lại */
+        z-index: 9999 !important;
+        box-shadow: -2px 0 10px rgba(59, 130, 246, 0.2) !important;
+    }
+
+    /* Ẩn hoàn toàn icon robot đen mặc định bên cạnh tiêu đề chính */
     [data-testid="stHeaderHeading"] svg, 
     [data-testid="stHeaderHeading"] div,
     [data-testid="stElementContainer"] h1 svg {
@@ -144,7 +169,6 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
         message_placeholder = st.empty()
         with st.spinner("🤖 AI đang suy nghĩ..."):
             
-            # 🔥 ĐÃ LOẠI BỎ 2.5 HOÀN TOÀN - Chỉ sử dụng các dòng mô hình thế hệ mới được phép kích hoạt
             models_to_try = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.0-flash"]
             
             ai_response = ""
