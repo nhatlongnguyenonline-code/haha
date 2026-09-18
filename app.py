@@ -10,35 +10,36 @@ import streamlit as st
 
 warnings.filterwarnings("ignore")
 
-#--- 1. CẤU HÌNH GIAO DIỆN NỀN TRẮNG CHỮ ĐEN THU GỌN KHUNG NHẬP LIỆU ---
+#--- 1. CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE THU GỌN NGHỆ THUẬT ---
 st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🤖", layout="centered")
 
-# Nhúng mã CSS tinh chỉnh nền trắng, chữ đen đậm và thu gọn 2 đầu ô gõ câu hỏi
+# Nhúng mã CSS thiết kế lại thanh nhập liệu nhỏ gọn nghệ thuật cao cấp
 st.markdown("""
     <style>
-    /* Màu nền tổng thể màu trắng sạch sẽ, chữ màu đen đậm rõ nét */
+    /* Nền tổng thể trắng tinh khôi, font chữ mượt mà dịu mắt */
     .stApp {
         background-color: #FFFFFF !important;
-        color: #111827 !important;
+        color: #1F2937 !important;
     }
     
-    /* Chỉnh sửa toàn bộ các đoạn chữ text mặc định sang màu đen */
+    /* Chuyển toàn bộ màu chữ mặc định sang màu xám đen đậm sắc nét */
     h1, h2, h3, p, span, label, .stMarkdown {
-        color: #111827 !important;
+        color: #1F2937 !important;
     }
     
-    /* Chỉnh sửa thanh Sidebar bên trái sang màu xám nhẹ dễ nhìn */
+    /* Cấu hình thanh Sidebar bên trái màu xám mịn thanh lịch */
     [data-testid="stSidebar"] {
-        background-color: #F3F4F6 !important;
+        background-color: #F8FAFC !important;
+        border-right: 1px solid #E2E8F0 !important;
     }
     [data-testid="stSidebar"] * {
-        color: #111827 !important;
+        color: #1F2937 !important;
     }
 
-    /* ĐỊNH DẠNG THU NGẮN 2 ĐẦU KHUNG VIẾT CÂU HỎI */
+    /* 🎨 TRANG TRÍ THANH NHẬP CÂU HỎI THU GỌN NGHỆ THUẬT */
     .stChatInput {
         position: fixed;
-        bottom: 20px;
+        bottom: 30px;
         left: 0;
         right: 0;
         z-index: 999;
@@ -46,33 +47,60 @@ st.markdown("""
         justify-content: center;
     }
     .stChatInput [data-testid="stChatInputCurrentContainer"] {
-        max-width: 700px !important; /* Thu hẹp độ dài tối đa của ô gõ câu hỏi */
-        width: 70% !important;        /* Căn chỉnh ô gõ chiếm 70% chiều rộng màn hình */
-        margin: 0 auto !important;    /* Tự động căn giữa đều hai đầu */
-        border: 2px solid #2563EB !important; /* Viền xanh dương đậm rõ nét */
-        border-radius: 12px !important;
-        background-color: #FAFAFA !important; /* Nền ô gõ màu trắng xám */
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important; /* Đổ bóng mờ nhẹ */
+        max-width: 650px !important; /* Độ rộng thu gọn nhỏ vừa vặn cực đẹp */
+        width: 65% !important;
+        margin: 0 auto !important;
+        border: 2px solid #3B82F6 !important; /* Viền xanh dương trẻ trung */
+        border-radius: 24px !important; /* Bo cong tròn hai đầu mềm mại */
+        background-color: #F8FAFC !important; /* Nền xám trắng pha lê dịu nhẹ */
+        padding: 4px 10px !important;
+        box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.15), 0 8px 10px -6px rgba(59, 130, 246, 0.1) !important; /* Đổ bóng nghệ thuật tinh tế */
+        transition: all 0.3s ease !important;
+    }
+    /* Hiệu ứng phát sáng nhẹ khi click chuột vào ô gõ */
+    .stChatInput [data-testid="stChatInputCurrentContainer"]:focus-within {
+        border-color: #8B5CF6 !important; /* Đổi sang viền màu tím công nghệ */
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2) !important;
     }
     .stChatInput textarea {
-        color: #111827 !important; /* Chữ gõ màu đen đậm rõ ràng */
-        font-size: 1rem !important;
+        color: #1F2937 !important;
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
+    }
+    /* Đổi màu nút bấm gửi tin nhắn mũi tên */
+    .stChatInput button {
+        background-color: #3B82F6 !important;
+        color: white !important;
+        border-radius: 50% !important;
     }
 
-    /* TIÊU ĐỀ CHÍNH MÀU XANH DƯƠNG ĐẬM */
+    /* ĐỊNH DẠNG KHUNG TIN NHẮN CHAT SẠCH SẼ */
+    [data-testid="stChatMessage"] {
+        background-color: #F1F5F9 !important; /* Hộp thoại AI màu xám nhạt nhẹ nhàng */
+        border-radius: 16px !important;
+        margin-bottom: 12px !important;
+        padding: 12px 16px !important;
+    }
+    [data-testid="stChatMessageUser"] {
+        background-color: #EFF6FF !important; /* Hộp thoại Bạn màu xanh dương pastel thanh lịch */
+        border: 1px solid #BFDBFE !important;
+    }
+
+    /* TIÊU ĐỀ NGHỆ THUẬT PHONG CÁCH APPLE */
     .main-title {
-        font-size: 2.3rem;
-        font-weight: 700;
-        color: #1D4ED8 !important;
+        font-size: 2.2rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        color: #1E3A8A !important; /* Xanh hoàng gia quyền lực */
         text-align: center;
-        margin-top: 1rem;
-        margin-bottom: 5px;
+        margin-top: 1.5rem;
+        margin-bottom: 4px;
     }
     .sub-title {
         text-align: center;
-        color: #4B5563 !important;
-        font-size: 1rem;
-        margin-bottom: 2rem;
+        color: #64748B !important;
+        font-size: 0.95rem;
+        margin-bottom: 2.5rem;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -147,7 +175,7 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 #--- 4. KHUNG NHẬP LIỆU VÀ XỬ LÝ LOGIC ---
-if user_input := st.chat_input("HÃY GÕ CÂU HỎI CỦA BẠN VÀO ĐÂY VÀ ẤN ENTER..."):
+if user_input := st.chat_input("Nhập câu hỏi của bạn tại đây..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user", avatar="👤"): 
         st.markdown(user_input)
