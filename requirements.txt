@@ -1,8 +1,10 @@
 streamlit
-streamlit-authenticator
 google-genai
 duckduckgo_search
 beautifulsoup4
 requests
 Pillow
 numpy
+bcrypt
+authlib
+httpx
