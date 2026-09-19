@@ -220,13 +220,29 @@ with st.sidebar:
     uploaded_file = st.file_uploader("Tải ảnh lên tại đây...", type=["png", "jpg", "jpeg"])
     if uploaded_file: st.image(Image.open(uploaded_file), caption="Ảnh đã chọn", use_container_width=True)
     st.markdown("---")
+    
+    # ⚡ KHU VỰC ĐÃ CẬP NHẬT HAI NÚT XÓA SONG SONG NẰM CÙNG MỘT DÒNG
     st.markdown("### 📂 NHẬT KÝ TRANG HIỆN TẠI")
-    if st.session_state[pages_key][current_page]:
-        if st.button("🗑️ Xóa cuộc trò chuyện này", use_container_width=True):
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🗑️ Dọn tin nhắn", use_container_width=True, help="Xóa sạch nội dung chat của trang hiện tại"):
             st.session_state[pages_key][current_page] = []
             all_histories[u_id] = st.session_state[pages_key]
             save_all_chat_histories(all_histories)
             st.rerun()
+    with col2:
+        # Chỉ hiển thị nút xóa hẳn trang nếu người dùng đang có từ 2 trang chat trở lên
+        if len(page_options) > 1:
+            if st.button("❌ Xóa hẳn trang", use_container_width=True, help="Xóa sổ hoàn toàn trang chat này"):
+                # Xóa tên trang ra khỏi từ điển dữ liệu
+                del st.session_state[pages_key][current_page]
+                all_histories[u_id] = st.session_state[pages_key]
+                save_all_chat_histories(all_histories)
+                # Chỉ định trang chat còn lại kế bên làm trang active mới
+                st.session_state[active_page_key] = list(st.session_state[pages_key].keys())[-1]
+                st.rerun()
+        else:
+            st.caption("🔒 Yêu cầu giữ lại ít nhất 1 trang chat mặc định.")
 
 # Hiển thị lịch sử hội thoại của trang đang chọn
 for message in st.session_state[pages_key][current_page]:
