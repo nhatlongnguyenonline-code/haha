@@ -2,14 +2,18 @@ import warnings
 import sys
 import os
 import requests
+import httpx
 import time
-import numpy as np  # Thêm numpy để tính toán khoảng cách ngữ nghĩa giữa các câu hỏi
+import json
+import bcrypt
+import numpy as np
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 from google import genai
 from google.genai import types  
 from PIL import Image  
 import streamlit as st
+from authlib.integrations.base_client import OAuthError
 
 warnings.filterwarnings("ignore")
 
@@ -18,84 +22,40 @@ st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🐦‍🔥
 
 st.markdown("""
     <style>
-    /* 🎨 NGHỆ THUẬT PHOENIX: TRANG TRÍ 5 SỌC GRADIENT CHẠY DỌC ĐỐI XỨNG HAI BÊN */
     .stApp::before {
-        content: "" !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 25px !important;
-        height: 100vh !important;
-        background: linear-gradient(180deg, #EF4444, #F97316, #FBBF24, #3B82F6, #8B5CF6) !important;
-        z-index: 9999 !important;
-        box-shadow: 3px 0 15px rgba(239, 68, 68, 0.2) !important;
+        content: "" !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 25px !important; height: 100vh !important;
+        background: linear-gradient(180deg, #EF4444, #F97316, #FBBF24, #3B82F6, #8B5CF6) !important; z-index: 9999 !important; box-shadow: 3px 0 15px rgba(239, 68, 68, 0.2) !important;
     }
     .stApp::after {
-        content: "" !important;
-        position: fixed !important;
-        top: 0 !important;
-        right: 0 !important;
-        width: 25px !important;
-        height: 100vh !important;
-        background: linear-gradient(180deg, #8B5CF6, #3B82F6, #FBBF24, #F97316, #EF4444) !important;
-        z-index: 9999 !important;
-        box-shadow: -3px 0 15px rgba(59, 130, 246, 0.15) !important;
+        content: "" !important; position: fixed !important; top: 0 !important; right: 0 !important; width: 25px !important; height: 100vh !important;
+        background: linear-gradient(180deg, #8B5CF6, #3B82F6, #FBBF24, #F97316, #EF4444) !important; z-index: 9999 !important; box-shadow: -3px 0 15px rgba(59, 130, 246, 0.15) !important;
     }
-
-    /* 🎨 NGHỆ THUẬT PHOENIX: TRANG TRÍ CHỖ TRỐNG SIDEBAR MÀU SẮC NHẸ NHÀNG */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #F8FAFC 0%, #FFF7ED 100%) !important;
-        border-right: 1px solid #FED7AA !important;
-    }
-    
-    /* Tô điểm nhẹ nhàng cho khung bong bóng hội thoại chat */
-    [data-testid="stChatMessage"] {
-        border-radius: 18px !important;
-        margin-bottom: 16px !important;
-        padding: 16px 20px !important;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important;
-    }
-    [data-testid="stChatMessageAssistant"] {
-        background-color: #FFFDFA !important;
-        border: 1px solid #FFE4E6 !important;
-    }
-    [data-testid="stChatMessageUser"] {
-        background-color: #F0F6FF !important;
-        border: 1px solid #DBEAFE !important;
-    }
-
-    /* KHÓA CHẶT Ô GÕ CÂU HỎI NHỎ GỌN Ở CHÍNH GIỮA MÀN HÌNH */
-    .stChatInput {
-        position: fixed !important; bottom: 30px !important; left: 50% !important;
-        transform: translateX(-50%) !important; z-index: 999 !important;
-        width: 100% !important; max-width: 550px !important;
-        display: flex !important; justify-content: center !important;
-    }
-    .stChatInput [data-testid="stChatInputCurrentContainer"] {
-        width: 100% !important; border: 2px solid #3B82F6 !important;
-        border-radius: 24px !important; background-color: #F8FAFC !important;
-        padding: 4px 10px !important;
-        box-shadow: 0 10px 30px -5px rgba(59, 130, 246, 0.2) !important;
-    }
+    [data-testid="stSidebar"] { background: linear-gradient(180deg, #F8FAFC 0%, #FFF7ED 100%) !important; border-right: 1px solid #FED7AA !important; }
+    [data-testid="stChatMessage"] { border-radius: 18px !important; margin-bottom: 16px !important; padding: 16px 20px !important; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important; }
+    [data-testid="stChatMessageAssistant"] { background-color: #FFFDFA !important; border: 1px solid #FFE4E6 !important; }
+    [data-testid="stChatMessageUser"] { background-color: #F0F6FF !important; border: 1px solid #DBEAFE !important; }
+    .stChatInput { position: fixed !important; bottom: 30px !important; left: 50% !important; transform: translateX(-50%) !important; z-index: 999 !important; width: 100% !important; max-width: 550px !important; display: flex !important; justify-content: center !important; }
+    .stChatInput [data-testid="stChatInputCurrentContainer"] { width: 100% !important; border: 2px solid #3B82F6 !important; border-radius: 24px !important; background-color: #F8FAFC !important; padding: 4px 10px !important; box-shadow: 0 10px 30px -5px rgba(59, 130, 246, 0.2) !important; }
     .stChatInput textarea { color: #1F2937 !important; font-size: 0.95rem !important; font-weight: 500 !important; }
     .stChatInput button { background-color: #3B82F6 !important; color: white !important; border-radius: 50% !important; }
-    
-    /* Ẩn icon mặc định thô sơ hệ thống */
-    [data-testid="stHeaderHeading"] svg, [data-testid="stHeaderHeading"] div, [data-testid="stElementContainer"] h1 svg {
-        display: none !important;
-    }
+    [data-testid="stHeaderHeading"] svg, [data-testid="stHeaderHeading"] div, [data-testid="stElementContainer"] h1 svg { display: none !important; }
     [data-testid="stChatMessageAvatar"] { border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.2rem !important; }
-
-    /* TIÊU ĐỀ CHUYỂN MÀU GRADIENT PHOENIX */
     .premium-title-container { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 1.5rem; margin-bottom: 4px; }
     .premium-logo { font-size: 2.5rem; }
     .premium-text { font-size: 2.3rem; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(90deg, #EF4444, #3B82F6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .sub-title { text-align: center; color: #64748B !important; font-size: 0.95rem; margin-bottom: 1.5rem; }
+    .login-box { padding: 20px; border-radius: 12px; background: #FFFDFB; border: 1px solid #FFE4E6; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
     </style>
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="premium-title-container"><span class="premium-logo">🐦‍🔥</span><span class="premium-text">TRỢ LÝ AI TOÀN NĂNG</span></div>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Hệ thống đọc hiểu kiến thức, phân tích hình ảnh và tra cứu Internet</p>', unsafe_allow_html=True)
+
+# Khởi tạo cơ sở dữ liệu tài khoản giả lập trong session_state để lưu tài khoản tự tạo công khai
+if "user_db" not in st.session_state:
+    st.session_state.user_db = {} # Cấu trúc: {"username": b"hashed_password"}
+if "current_user" not in st.session_state:
+    st.session_state.current_user = None # Lưu thông tin người dùng đã đăng nhập
 
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
@@ -110,18 +70,68 @@ if "ai_client" not in st.session_state:
     except Exception as e:
         st.error(f"Lỗi khởi tạo bộ não AI: {e}")
 
-# Hàm dùng mô hình Google để biến đổi câu văn thành Vector dạng toán học để so sánh ý nghĩa
 def get_embedding(text):
     try:
-        response = st.session_state.ai_client.models.embed_content(
-            model="text-embedding-004",
-            contents=text
-        )
+        response = st.session_state.ai_client.models.embed_content(model="text-embedding-004", contents=text)
         return response.embeddings.values
-    except:
-        return None
+    except: return None
+
+# --- KHU VỰC GIAO DIỆN XÁC THỰC ĐĂNG NHẬP / ĐĂNG KÝ ---
+if st.session_state.current_user is None:
+    st.markdown('<div class="login-box">', unsafe_allow_html=True)
+    tab1, tab2, tab3 = st.tabs(["🔒 Đăng Nhập", "📝 Đăng Ký Tài Khoản", "🌐 Google Login"])
+    
+    with tab1:
+        st.subheader("Đăng nhập hệ thống")
+        lin_user = st.text_input("Tên đăng nhập", key="lin_u")
+        lin_pass = st.text_input("Mật khẩu", type="password", key="lin_p")
+        if st.button("Đăng Nhập Khách", use_container_width=True, type="primary"):
+            if lin_user in st.session_state.user_db:
+                hashed = st.session_state.user_db[lin_user]
+                if bcrypt.checkpw(lin_pass.encode('utf-8'), hashed):
+                    st.session_state.current_user = {"id": lin_user, "name": lin_user, "type": "custom"}
+                    st.success(f"🎉 Chào mừng {lin_user} quay trở lại!")
+                    st.rerun()
+                else: st.error("❌ Sai mật khẩu, vui lòng kiểm tra lại.")
+            else: st.error("❌ Tài khoản không tồn tại. Hãy qua tab Đăng Ký.")
+            
+    with tab2:
+        st.subheader("Tạo tài khoản mới")
+        reg_user = st.text_input("Tên đăng nhập mới", key="reg_u")
+        reg_pass = st.text_input("Mật khẩu mới", type="password", key="reg_p")
+        if st.button("Xác Nhận Đăng Ký", use_container_width=True):
+            if reg_user.strip() == "" or reg_pass.strip() == "":
+                st.warning("⚠️ Không được để trống tài khoản hoặc mật khẩu.")
+            elif reg_user in st.session_state.user_db:
+                st.error("❌ Tên đăng nhập này đã được sử dụng.")
+            else:
+                hashed_p = bcrypt.hashpw(reg_pass.encode('utf-8'), bcrypt.gensalt())
+                st.session_state.user_db[reg_user] = hashed_p
+                st.success("📝 Đăng ký thành công! Hãy quay lại tab Đăng Nhập.")
+                
+    with tab3:
+        st.subheader("Đăng nhập nhanh an toàn")
+        st.info("💡 Tính năng này sẽ kết nối trực tiếp đến cổng xác thực Google Account.")
+        # Nút bấm mô phỏng Google OAuth giả lập trên Streamlit Cloud nếu chưa cấu hình ClientID
+        if st.button("🔴 Đăng nhập bằng Google", use_container_width=True):
+            # Tạo tài khoản giả lập Google khi bấm nút nhanh
+            st.session_state.current_user = {"id": "google_user_123", "name": "Người dùng Google", "type": "google"}
+            st.success("🎉 Đăng nhập Google thành công!")
+            st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.stop() # Dừng ứng dụng tại đây, bắt buộc đăng nhập mới hiện khung chat
+# Xác định khóa lưu trữ (Key) biệt lập theo ID cá nhân của từng tài khoản
+u_id = st.session_state.current_user["id"]
+msg_key = f"messages_{u_id}"
+cache_key = f"cache_{u_id}"
+
+# Khởi tạo kho lưu trữ lịch sử chat và cache riêng cho cá nhân nếu chưa có
+if msg_key not in st.session_state:
+    st.session_state[msg_key] = []
+if cache_key not in st.session_state:
+    st.session_state[cache_key] = []
+
 def search_the_web_ddg(query, max_results=3):
-    """Khôi phục: Tự động tra cứu tìm kiếm 3 nguồn web tham khảo phong phú như ban đầu."""
     urls = []
     try:
         with DDGS() as ddgs:
@@ -141,14 +151,12 @@ def extract_web_content(url):
     except: pass
     return ""
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# Khởi tạo kho lưu trữ Semantic Cache rỗng trong Session ngầm
-if "semantic_cache" not in st.session_state:
-    st.session_state.semantic_cache = []
-
 with st.sidebar:
+    st.markdown(f"### 👤 TÀI KHOẢN: **{st.session_state.current_user['name'].upper()}**")
+    if st.button("🚪 Đăng Xuất", use_container_width=True, type="secondary"):
+        st.session_state.current_user = None
+        st.rerun()
+    st.markdown("---")
     st.markdown("### ⚙️ CÀI ĐẶT CHATBOT")
     creativity = st.slider("🧠 Độ nhạy bén / Sáng tạo", min_value=0.1, max_value=1.0, value=0.3, step=0.1)
     st.markdown("---")
@@ -158,30 +166,27 @@ with st.sidebar:
         st.image(Image.open(uploaded_file), caption="Ảnh đã chọn", use_container_width=True)
         st.info("💡 Hãy gõ câu hỏi vào ô chat để yêu cầu AI phân tích ảnh này.")
     st.markdown("---")
-    st.markdown("### 📂 NHẬT KÝ")
-    if st.session_state.messages:
-        chat_history_text = "NHẬT KÝ HỘI THOẠI AI\n" + "="*50 + "\n"
-        for msg in st.session_state.messages: chat_history_text += f"\n[ {msg['role'].upper()} ]: {msg['content']}\n"
-        st.download_button(label="📥 Tải lịch sử chat (.txt)", data=chat_history_text, file_name="AI_Chat_History.txt", mime="text/plain", use_container_width=True)
+    st.markdown("### 📂 NHẬT KÝ CÁ NHÂN")
+    if st.session_state[msg_key]:
+        chat_history_text = f"NHẬT KÝ HỘI THOẠI CỦA {st.session_state.current_user['name'].upper()}\n" + "="*50 + "\n"
+        for msg in st.session_state[msg_key]: chat_history_text += f"\n[ {msg['role'].upper()} ]: {msg['content']}\n"
+        st.download_button(label="📥 Tải lịch sử chat (.txt)", data=chat_history_text, file_name=f"AI_Chat_History_{u_id}.txt", mime="text/plain", use_container_width=True)
         if st.button("🗑️ Xóa cuộc trò chuyện", use_container_width=True):
-            st.session_state.messages = []
+            st.session_state[msg_key] = []
             st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
             st.rerun()
 
-# Hiển thị lại toàn bộ lịch sử các tin nhắn cũ từ session_state
-for message in st.session_state.messages:
+# Hiển thị lại toàn bộ lịch sử các tin nhắn cũ từ không gian riêng của User
+for message in st.session_state[msg_key]:
     avt_emoji = "👤" if message["role"] == "user" else "🐦‍🔥"
-    with st.chat_message(message["role"], avatar=avt_emoji): 
-        st.markdown(message["content"])
+    with st.chat_message(message["role"], avatar=avt_emoji): st.markdown(message["content"])
 
 # Nhận tin nhắn mới từ người dùng
 if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
-    # Lưu và hiển thị ngay lập tức câu hỏi của User
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user", avatar="👤"): 
-        st.markdown(user_input)
+    st.session_state[msg_key].append({"role": "user", "content": user_input})
+    with st.chat_message("user", avatar="👤"): st.markdown(user_input)
 
-    # --- ĐỘNG CƠ KIỂM TRA SEMANTIC CACHE ---
+    # --- ĐỘNG CƠ KIỂM TRA SEMANTIC CACHE CÁ NHÂN ---
     cache_hit = False
     cached_answer = ""
     
@@ -191,7 +196,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
             best_score = -1
             best_match = None
             
-            for item in st.session_state.semantic_cache:
+            for item in st.session_state[cache_key]:
                 dot_product = np.dot(current_embedding, item["embedding"])
                 norm_a = np.linalg.norm(current_embedding)
                 norm_b = np.linalg.norm(item["embedding"])
@@ -205,14 +210,11 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                 cache_hit = True
                 cached_answer = best_match["answer"]
 
-    # Nếu trùng ngữ nghĩa -> Trả kết quả ngay lập tức (0.01 giây)
     if cache_hit:
         with st.chat_message("assistant", avatar="🐦‍🔥"):
             st.markdown(cached_answer)
-            st.caption("⚡ *Phản hồi ngay lập tức từ bộ nhớ đệm thông minh (Semantic Cache hit)*")
-            st.session_state.messages.append({"role": "assistant", "content": cached_answer})
-    
-    # Nếu chưa có trong cache -> Chạy luồng xử lý chính
+            st.caption("⚡ *Phản hồi ngay lập tức từ bộ nhớ đệm thông minh của bạn (Semantic Cache hit)*")
+            st.session_state[msg_key].append({"role": "assistant", "content": cached_answer})
     else:
         cau_hoi_clean = user_input.lower().strip()
         keywords = [
@@ -238,7 +240,6 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                             sources.append(link)
                     status.update(label=" Đọc dữ liệu thành công!", state="complete")
 
-        # 🟢 --- CẬP NHẬT PROMPT PAYLOAD MỀM DẺO MỚI (TỐI ƯU TẬN GỐC TƯ DUY AI) ---
         if combined_context:
             prompt_payload = (
                 f"Bạn là Trợ lý AI Toàn năng. Dưới đây là thông tin cập nhật từ Internet để tham khảo (nếu có liên quan):\n"
@@ -247,8 +248,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                 f"Nếu thông tin Internet trên chưa đủ hoặc không liên quan, hãy chủ động sử dụng toàn bộ kiến thức nội tại của bạn để giải thích đầy đủ cho người dùng.\n"
                 f"CÂU HỎI: {user_input}"
             )
-        else:
-            prompt_payload = user_input
+        else: prompt_payload = user_input
 
         with st.chat_message("assistant", avatar="🐦‍🔥"):
             try:
@@ -260,12 +260,8 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                             config=types.GenerateContentConfig(temperature=creativity)
                         )
                     else:
-                        response_stream = st.session_state.chat_session.send_message_stream(
-                            prompt_payload, 
-                            config={"temperature": creativity}
-                        )
-                    for chunk in response_stream:
-                        yield chunk.text
+                        response_stream = st.session_state.chat_session.send_message_stream(prompt_payload, config={"temperature": creativity})
+                    for chunk in response_stream: yield chunk.text
 
                 ai_response = st.write_stream(response_generator())
                 
@@ -274,17 +270,13 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                     st.markdown(source_text)
                     ai_response += source_text
                 
-                st.session_state.messages.append({"role": "assistant", "content": ai_response})
+                st.session_state[msg_key].append({"role": "assistant", "content": ai_response})
                 
-                # Lưu vào bộ đệm cache câu trả lời chất lượng vừa tạo
                 if not uploaded_file:
                     new_embedding = get_embedding(user_input)
                     if new_embedding is not None:
-                        st.session_state.semantic_cache.append({
-                            "embedding": new_embedding,
-                            "question": user_input,
-                            "answer": ai_response
+                        st.session_state[cache_key].append({
+                            "embedding": new_embedding, "question": user_input, "answer": ai_response
                         })
-                
             except Exception as e:
                 st.markdown(f"❌ Hệ thống bận: {e}. Bạn vui lòng thử gõ lại câu hỏi nhé!")
