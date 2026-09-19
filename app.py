@@ -64,7 +64,6 @@ def load_user_db():
 def save_user_db(db_data):
     with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db_data, f, ensure_ascii=False, indent=4)
 
-# Hàm đọc lịch sử chat từ file JSON lên
 def load_all_chat_histories():
     if os.path.exists(HISTORY_FILE):
         try:
@@ -72,12 +71,10 @@ def load_all_chat_histories():
         except: return {}
     return {}
 
-# Hàm ghi đồng bộ lịch sử chat xuống file JSON
 def save_all_chat_histories(history_data):
     with open(HISTORY_FILE, "w", encoding="utf-8") as f: json.dump(history_data, f, ensure_ascii=False, indent=4)
 
 user_db = load_user_db()
-
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
 except:
@@ -138,30 +135,39 @@ if logged_in_user is None:
             st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
+
 u_id = logged_in_user
 pages_key = f"chat_pages_{u_id}"      
 active_page_key = f"active_page_{u_id}" 
 cache_key = f"cache_{u_id}"
 
-# 🟢 ĐỌC VÀ ĐỒNG BỘ DỮ LIỆU TỪ FILE JSON LÊN RAM KHI TẢI LẠI TRANG
 all_histories = load_all_chat_histories()
 
+# --- LOGIC TỰ ĐỘNG TẠO TRANG CHAT MỚI KHI RESTART/F5 TRANG ---
 if pages_key not in st.session_state:
-    # Nếu trong file JSON ẩn đã có sẵn các phòng chat cũ của User này thì lấy ra dùng luôn
-    if u_id in all_histories:
-        st.session_state[pages_key] = all_histories[u_id]
+    if u_id in all_histories and all_histories[u_id]:
+        existing_pages = all_histories[u_id]
+        new_page_index = len(existing_pages) + 1
+        new_page_name = f"Trang Chat {new_page_index}"
+        
+        existing_pages[new_page_name] = []
+        st.session_state[pages_key] = existing_pages
+        
+        all_histories[u_id] = existing_pages
+        save_all_chat_histories(all_histories)
+        st.session_state[active_page_key] = new_page_name
     else:
         st.session_state[pages_key] = {"Trang Chat 1": []}
         all_histories[u_id] = st.session_state[pages_key]
         save_all_chat_histories(all_histories)
+        st.session_state[active_page_key] = "Trang Chat 1"
 
 if active_page_key not in st.session_state:
-    st.session_state[active_page_key] = list(st.session_state[pages_key].keys())[0]
+    st.session_state[active_page_key] = list(st.session_state[pages_key].keys())[-1]
 if cache_key not in st.session_state:
     st.session_state[cache_key] = []
 
 current_page = st.session_state[active_page_key]
-
 def search_the_web_ddg(query, max_results=3):
     urls = []
     try:
@@ -194,17 +200,13 @@ with st.sidebar:
         new_page_index = len(st.session_state[pages_key]) + 1
         new_page_name = f"Trang Chat {new_page_index}"
         st.session_state[pages_key][new_page_name] = []
-        
-        # Đồng bộ phòng chat mới tạo xuống file ổ cứng
         all_histories[u_id] = st.session_state[pages_key]
         save_all_chat_histories(all_histories)
-        
         st.session_state[active_page_key] = new_page_name
         st.rerun()
         
     page_options = list(st.session_state[pages_key].keys())
-    # Đề phòng trường hợp lỗi index khi đổi user
-    if current_page not in page_options: current_page = page_options[0]
+    if current_page not in page_options: current_page = page_options[-1]
     selected_page = st.selectbox("Chọn trang hội thoại đang xem:", page_options, index=page_options.index(current_page))
     if selected_page != current_page:
         st.session_state[active_page_key] = selected_page
@@ -226,7 +228,7 @@ with st.sidebar:
             save_all_chat_histories(all_histories)
             st.rerun()
 
-# Hiển thị lại toàn bộ lịch sử hội thoại cũ lấy từ file database lên màn hình
+# Hiển thị lịch sử hội thoại của trang đang chọn
 for message in st.session_state[pages_key][current_page]:
     avt_emoji = "👤" if message["role"] == "user" else "🐦‍🔥"
     with st.chat_message(message["role"], avatar=avt_emoji): st.markdown(message["content"])
@@ -260,8 +262,6 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
             st.markdown(cached_answer)
             st.caption(f"⚡ *Phản hồi ngay lập tức từ cache của {current_page}*")
             st.session_state[pages_key][current_page].append({"role": "assistant", "content": cached_answer})
-            
-            # Lưu đồng bộ câu trả lời từ Cache xuống file
             all_histories[u_id] = st.session_state[pages_key]
             save_all_chat_histories(all_histories)
     else:
@@ -324,8 +324,6 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                     ai_response += source_text
                 
                 st.session_state[pages_key][current_page].append({"role": "assistant", "content": ai_response})
-                
-                # 🟢 ĐỒNG BỘ TIN NHẮN MỚI TẠO CỦA USER VÀ AI XUỐNG FILE JSON Ổ CỨNG VĨNH VIỄN
                 all_histories[u_id] = st.session_state[pages_key]
                 save_all_chat_histories(all_histories)
                 
