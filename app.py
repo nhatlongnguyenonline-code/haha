@@ -17,37 +17,108 @@ import streamlit as st
 
 warnings.filterwarnings("ignore")
 
-#--- CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE KHÓA CHÍNH GIỮA ---
-st.set_page_config(page_title="Trợ Lý AI Thông Minh", page_icon="🐦‍🔥", layout="centered")
+#--- CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE SẠCH SẼ (ĐÃ XÓA GRADIENT HAI BÊN) ---
+st.set_page_config(page_title="Trợ Lý AI Toàn Năng", page_icon="🐦‍🔥", layout="centered")
 
 st.markdown("""
     <style>
-    .stApp::before {
-        content: "" !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 25px !important; height: 100vh !important;
-        background: linear-gradient(180deg, #EF4444, #F97316, #FBBF24, #3B82F6, #8B5CF6) !important; z-index: 9999 !important; box-shadow: 3px 0 15px rgba(239, 68, 68, 0.2) !important;
+    /* ĐÃ XÓA THANH GRADIENT HAI BÊN KHỎI .stApp::before VÀ .stApp::after */
+    
+    [data-testid="stSidebar"] { 
+        background: linear-gradient(180deg, #F8FAFC 0%, #FFF7ED 100%) !important; 
+        border-right: 1px solid #FED7AA !important; 
     }
-    .stApp::after {
-        content: "" !important; position: fixed !important; top: 0 !important; right: 0 !important; width: 25px !important; height: 100vh !important;
-        background: linear-gradient(180deg, #8B5CF6, #3B82F6, #FBBF24, #F97316, #EF4444) !important; z-index: 9999 !important; box-shadow: -3px 0 15px rgba(59, 130, 246, 0.15) !important;
+    [data-testid="stChatMessage"] { 
+        border-radius: 18px !important; 
+        margin-bottom: 16px !important; 
+        padding: 16px 20px !important; 
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important; 
     }
-    [data-testid="stSidebar"] { background: linear-gradient(180deg, #F8FAFC 0%, #FFF7ED 100%) !important; border-right: 1px solid #FED7AA !important; }
-    [data-testid="stChatMessage"] { border-radius: 18px !important; margin-bottom: 16px !important; padding: 16px 20px !important; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important; }
-    [data-testid="stChatMessageAssistant"] { background-color: #FFFDFA !important; border: 1px solid #FFE4E6 !important; }
-    [data-testid="stChatMessageUser"] { background-color: #F0F6FF !important; border: 1px solid #DBEAFE !important; }
-    .stChatInput { position: fixed !important; bottom: 30px !important; left: 50% !important; transform: translateX(-50%) !important; z-index: 999 !important; width: 100% !important; max-width: 550px !important; display: flex !important; justify-content: center !important; }
-    .stChatInput [data-testid="stChatInputCurrentContainer"] { width: 100% !important; border: 2px solid #3B82F6 !important; border-radius: 24px !important; background-color: #F8FAFC !important; padding: 4px 10px !important; box-shadow: 0 10px 30px -5px rgba(59, 130, 246, 0.2) !important; }
-    .stChatInput textarea { color: #1F2937 !important; font-size: 0.95rem !important; font-weight: 500 !important; }
-    .stChatInput button { background-color: #3B82F6 !important; color: white !important; border-radius: 50% !important; }
-    [data-testid="stHeaderHeading"] svg, [data-testid="stHeaderHeading"] div, [data-testid="stElementContainer"] h1 svg { display: none !important; }
-    [data-testid="stChatMessageAvatar"] { border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.2rem !important; }
-    .premium-title-container { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 1.5rem; margin-bottom: 4px; }
-    .premium-logo { font-size: 2.5rem; }
-    .premium-text { font-size: 2.3rem; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(90deg, #EF4444, #3B82F6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .sub-title { text-align: center; color: #64748B !important; font-size: 0.95rem; margin-bottom: 1.5rem; }
-    .login-box { padding: 20px; border-radius: 12px; background: #FFFDFB; border: 1px solid #FFE4E6; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    [data-testid="stChatMessageAssistant"] { 
+        background-color: #FFFDFA !important; 
+        border: 1px solid #FFE4E6 !important; 
+    }
+    [data-testid="stChatMessageUser"] { 
+        background-color: #F0F6FF !important; 
+        border: 1px solid #DBEAFE !important; 
+    }
+    .stChatInput { 
+        position: fixed !important; 
+        bottom: 30px !important; 
+        left: 50% !important; 
+        transform: translateX(-50%) !important; 
+        z-index: 999 !important; 
+        width: 100% !important; 
+        max-width: 550px !important; 
+        display: flex !important; 
+        justify-content: center !important; 
+    }
+    .stChatInput [data-testid="stChatInputCurrentContainer"] { 
+        width: 100% !important; 
+        border: 2px solid #3B82F6 !important; 
+        border-radius: 24px !important; 
+        background-color: #F8FAFC !important; 
+        padding: 4px 10px !important; 
+        box-shadow: 0 10px 30px -5px rgba(59, 130, 246, 0.2) !important; 
+    }
+    .stChatInput textarea { 
+        color: #1F2937 !important; 
+        font-size: 0.95rem !important; 
+        font-weight: 500 !important; 
+    }
+    .stChatInput button { 
+        background-color: #3B82F6 !important; 
+        color: white !important; 
+        border-radius: 50% !important; 
+    }
+    
+    /* ĐÃ SỬA: Chỉ ẩn icon SVG mặc định của Streamlit, giữ lại chữ tiêu đề hiển thị rõ ràng */
+    [data-testid="stHeaderHeading"] svg, [data-testid="stElementContainer"] h1 svg { 
+        display: none !important; 
+    }
+    
+    [data-testid="stChatMessageAvatar"] { 
+        border-radius: 50% !important; 
+        display: flex !important; 
+        align-items: center !important; 
+        justify-content: center !important; 
+        font-size: 1.2rem !important; 
+    }
+    .premium-title-container { 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        gap: 12px; 
+        margin-top: 1.5rem; 
+        margin-bottom: 4px; 
+    }
+    .premium-logo { 
+        font-size: 2.5rem; 
+    }
+    .premium-text { 
+        font-size: 2.3rem; 
+        font-weight: 800; 
+        letter-spacing: -0.5px; 
+        background: linear-gradient(90deg, #EF4444, #3B82F6); 
+        -webkit-background-clip: text; 
+        -webkit-text-fill-color: transparent; 
+    }
+    .sub-title { 
+        text-align: center; 
+        color: #64748B !important; 
+        font-size: 0.95rem; 
+        margin-bottom: 1.5rem; 
+    }
+    .login-box { 
+        padding: 20px; 
+        border-radius: 12px; 
+        background: #FFFDFB; 
+        border: 1px solid #FFE4E6; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
+        margin-bottom: 20px; 
+    }
     </style>
 """, unsafe_allow_html=True)
-
 # Khai báo các tệp lưu trữ dữ liệu vĩnh viễn trên Server
 DB_FILE = "users_database.json"
 HISTORY_FILE = "chat_history_database.json"
@@ -116,10 +187,9 @@ if logged_in_user is None:
                 stored_val = user_db[lin_user]
                 stored_pass = stored_val["password"] if isinstance(stored_val, dict) else stored_val
                 if bcrypt.checkpw(lin_pass.encode('utf-8'), stored_pass.encode('utf-8')):
-                    # Sinh mã Token ngẫu nhiên mã hóa bảo mật cao cao cấp
                     secure_token = secrets.token_urlsafe(16)
                     st.session_state.global_token_registry[secure_token] = lin_user
-                    st.query_params["token"] = secure_token  # Đưa token thay vì đưa username lên URL
+                    st.query_params["token"] = secure_token
                     st.success(f"🎉 Chào mừng {lin_user} quay trở lại!")
                     st.rerun()
                 else: st.error("❌ Sai mật khẩu, vui lòng kiểm tra lại.")
@@ -141,7 +211,6 @@ if logged_in_user is None:
                 
     st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
-
 u_id = logged_in_user
 pages_key = f"chat_pages_{u_id}"      
 active_page_key = f"active_page_{u_id}" 
@@ -209,7 +278,6 @@ with st.sidebar:
                 st.rerun()
                 
     if st.button("🚪 Đăng Xuất Hệ Thống", use_container_width=True, type="secondary"):
-        # Dọn dẹp Token khỏi registry toàn cục khi đăng xuất nhằm bảo mật tuyệt đối
         if current_url_token in st.session_state.global_token_registry:
             del st.session_state.global_token_registry[current_url_token]
         st.query_params.clear()
@@ -306,6 +374,15 @@ def extract_web_content(url):
             return ' '.join(soup.get_text().split())[:1500]
     except: pass
     return ""
+
+# KHÔI PHỤC HIỂN THỊ TIÊU ĐỀ THƯƠNG HIỆU LỚN KHÔNG BỊ KHUẤT CHỮ TRÊN TRANG CHÍNH
+st.markdown(f"""
+    <div class="premium-title-container">
+        <span class="premium-logo">🦅</span>
+        <span class="premium-text">TRỢ LÝ AI TOÀN NĂNG</span>
+    </div>
+    <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6 và Công cụ tra cứu Internet Tự động</div>
+""", unsafe_allow_html=True)
 
 # Hiển thị lịch sử hội thoại của trang đang chọn
 for message in st.session_state[pages_key][current_page]:
