@@ -77,14 +77,17 @@ def get_embedding(text):
         return response.embeddings.values
     except: return None
 
-# --- LUỒNG TỰ ĐỘNG ĐĂNG NHẬP QUA COOKIE ---
-saved_user = cookie_manager.get(cookie="user_login_session")
-if saved_user and st.session_state.current_user is None:
-    try:
-        st.session_state.current_user = json.loads(saved_user)
-    except: pass
+# 🟢 --- SỬA LỖI TRỄ ĐỌC COOKIE KHI RESTART/F5 TRANG ---
+# Cho phép hệ thống dừng nghỉ 0.4 - 0.5 giây để JS kịp load nạp Cookie từ trình duyệt về
+if st.session_state.current_user is None:
+    time.sleep(0.5) 
+    saved_user = cookie_manager.get(cookie="user_login_session")
+    if saved_user:
+        try:
+            st.session_state.current_user = json.loads(saved_user)
+        except: pass
 
-# Giao diện Đăng nhập nếu chưa xác định danh tính
+# Giao diện Đăng nhập nếu thực sự chưa đăng nhập
 if st.session_state.current_user is None:
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
     tab1, tab2, tab3 = st.tabs(["🔒 Đăng Nhập", "📝 Đăng Ký Tài Khoản", "🌐 Google Login"])
@@ -99,7 +102,6 @@ if st.session_state.current_user is None:
                 if bcrypt.checkpw(lin_pass.encode('utf-8'), hashed):
                     user_data = {"id": lin_user, "name": lin_user, "type": "custom"}
                     st.session_state.current_user = user_data
-                    # Lưu cookie duy trì phiên trong 7 ngày (604800 giây)
                     cookie_manager.set("user_login_session", json.dumps(user_data), max_age=604800)
                     st.success(f"🎉 Chào mừng {lin_user} quay trở lại!")
                     st.rerun()
@@ -131,13 +133,12 @@ if st.session_state.current_user is None:
     st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 u_id = st.session_state.current_user["id"]
-pages_key = f"chat_pages_{u_id}"      # Lưu trữ danh sách các phòng chat của User này
-active_page_key = f"active_page_{u_id}" # Lưu trữ ID phòng chat hiện tại đang mở
+pages_key = f"chat_pages_{u_id}"      
+active_page_key = f"active_page_{u_id}" 
 cache_key = f"cache_{u_id}"
 
-# ➕ KHỞI TẠO HỆ THỐNG ĐA TRANG CHAT CHO TỪNG TÀI KHOẢN
 if pages_key not in st.session_state:
-    st.session_state[pages_key] = {"Trang Chat 1": []} # Mặc định tạo sẵn Trang Chat 1 rỗng
+    st.session_state[pages_key] = {"Trang Chat 1": []} 
 if active_page_key not in st.session_state:
     st.session_state[active_page_key] = "Trang Chat 1"
 if cache_key not in st.session_state:
@@ -165,16 +166,14 @@ def extract_web_content(url):
     except: pass
     return ""
 
-# --- THANH SIDEBAR ĐA NĂNG NÂNG CẤP ---
 with st.sidebar:
     st.markdown(f"### 👤 TÀI KHOẢN: **{st.session_state.current_user['name'].upper()}**")
     if st.button("🚪 Đăng Xuất & Xóa Cookie Session", use_container_width=True, type="secondary"):
-        cookie_manager.delete("user_login_session")  # Xóa sạch cookie để bắt đăng nhập lại lần sau
+        cookie_manager.delete("user_login_session")  
         st.session_state.current_user = None
         st.rerun()
     st.markdown("---")
     
-    # 🌟 NÚT TẠO TRANG CHAT MỚI (NEW CHAT BUTTON)
     st.markdown("### 💬 QUẢN LÝ PHÒNG CHAT")
     if st.button("➕ Tạo trang chat mới", use_container_width=True, type="primary"):
         new_page_index = len(st.session_state[pages_key]) + 1
@@ -183,7 +182,6 @@ with st.sidebar:
         st.session_state[active_page_key] = new_page_name
         st.rerun()
         
-    # DANH SÁCH LỰA CHỌN CÁC TRANG CHAT CŨ ĐỂ CHUYỂN ĐỔI
     page_options = list(st.session_state[pages_key].keys())
     selected_page = st.selectbox("Chọn trang hội thoại đang xem:", page_options, index=page_options.index(current_page))
     if selected_page != current_page:
@@ -205,17 +203,14 @@ with st.sidebar:
             st.session_state[pages_key][current_page] = []
             st.rerun()
 
-# Hiển thị lại toàn bộ lịch sử các tin nhắn cũ của RIÊNG trang chat đang chọn
 for message in st.session_state[pages_key][current_page]:
     avt_emoji = "👤" if message["role"] == "user" else "🐦‍🔥"
     with st.chat_message(message["role"], avatar=avt_emoji): st.markdown(message["content"])
 
-# Nhận tin nhắn mới từ người dùng
 if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
     st.session_state[pages_key][current_page].append({"role": "user", "content": user_input})
     with st.chat_message("user", avatar="👤"): st.markdown(user_input)
 
-    # --- ĐỘNG CƠ KIỂM TRA SEMANTIC CACHE CÁ NHÂN ---
     cache_hit = False
     cached_answer = ""
     
@@ -278,7 +273,6 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
 
         with st.chat_message("assistant", avatar="🐦‍🔥"):
             try:
-                # Khởi tạo hoặc tái tạo chat session của riêng phòng chat hiện tại để AI nhớ đúng mạch của trang đó
                 chat_session_key = f"ai_session_{u_id}_{current_page}"
                 if chat_session_key not in st.session_state:
                     st.session_state[chat_session_key] = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
