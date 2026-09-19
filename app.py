@@ -10,6 +10,7 @@ import secrets
 import numpy as np
 import io
 import base64
+import urllib.parse
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 from google import genai
@@ -22,9 +23,9 @@ warnings.filterwarnings("ignore")
 
 #--- CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE SẠCH SẼ (XÓA GRADIENT HAI BÊN) ---
 st.set_page_config(page_title="Trợ Lý AI Toàn Năng", page_icon="🐦‍🔥", layout="centered")
-
 st.markdown("""
     <style>
+    /* XÓA HOÀN TOÀN THANH GRADIENT HAI BÊN KHỎI .stApp::before VÀ .stApp::after */
     [data-testid="stSidebar"] { 
         background: linear-gradient(180deg, #F8FAFC 0%, #FFF7ED 100%) !important; 
         border-right: 1px solid #FED7AA !important; 
@@ -187,7 +188,6 @@ if logged_in_user is None:
                         "username": reg_user, "password": hashed_p, "display_name": reg_user
                     }).execute()
                     st.success("📝 Đăng ký thành công! Hãy quay lại tab Đăng Nhập.")
-                
     st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 u_id = logged_in_user
@@ -228,13 +228,11 @@ if cache_key not in st.session_state:
     st.session_state[cache_key] = []
 
 current_page = st.session_state[active_page_key]
-
 user_info_res = supabase.table("users").select("display_name").eq("username", u_id).execute()
 display_name = user_info_res.data[0]["display_name"] if user_info_res.data else u_id
 
 with st.sidebar:
     st.markdown(f"### 👤 TÀI KHOẢN: **{display_name.upper()}**")
-    
     if f"rename_user_mode_{u_id}" not in st.session_state:
         st.session_state[f"rename_user_mode_{u_id}"] = False
         
@@ -361,7 +359,7 @@ for message in st.session_state[pages_key][current_page]:
     with st.chat_message(message["role"], avatar=avt_emoji):
         if message["content"].startswith("data:image/png;base64,"):
             base64_data = message["content"].split(",")
-            img_bytes = base64.b64decode(base64_data if len(base64_data) > 1 else base64_data)
+            img_bytes = base64.b64decode(base64_data[1] if len(base64_data) > 1 else base64_data[0])
             st.image(Image.open(io.BytesIO(img_bytes)))
         else:
             st.markdown(message["content"])
@@ -369,7 +367,6 @@ for message in st.session_state[pages_key][current_page]:
 if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh hoặc yêu cầu vẽ tranh tại đây..."):
     st.session_state[pages_key][current_page].append({"role": "user", "content": user_input})
     with st.chat_message("user", avatar="👤"): st.markdown(user_input)
-
     cau_hoi_clean = user_input.lower().strip()
     
     # 1. BỘ LỌC TỪ KHÓA KÍCH HOẠT ĐỘNG CƠ SINH ẢNH MIỄN PHÍ QUA HUGGING FACE FLUX
@@ -379,8 +376,6 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
         with st.chat_message("assistant", avatar="🐦‍🔥"):
             with st.status("🎨 Đang dịch mô tả và kích hoạt lõi FLUX xử lý ảnh nghệ thuật...", expanded=True) as status:
                 try:
-                    import urllib.parse
-                    
                     # Sử dụng Gemini 3.6 dịch mô tả tiếng Việt sang tiếng Anh chuyên sâu cho mô hình nghệ thuật FLUX
                     translation_prompt = (
                         "Translate this image description into a highly detailed, high-quality cinematic prompt for FLUX image generation. "
@@ -393,7 +388,6 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                     
                     # Sử dụng cổng API của siêu mô hình FLUX thế hệ mới
                     API_URL = "https://huggingface.co"
-                    
                     headers = {}
                     if "HF_TOKEN" in st.secrets:
                         headers["Authorization"] = f"Bearer {st.secrets['HF_TOKEN']}"
@@ -401,37 +395,35 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                     payload = {"inputs": english_prompt}
                     img_response = requests.post(API_URL, headers=headers, json=payload, timeout=45)
                     
-                    # Kiểm tra dữ liệu ảnh trả về
-                    if img_response.status_code == 200 and b"internal_server_error" not in img_response.content:
+                    # Kiểm tra dữ liệu ảnh trả về từ cổng chính Hugging Face
+                    if img_response.status_code == 200 and b"internal_server_error" not in img_response.content and b"error" not in img_response.content:
                         image_raw = Image.open(io.BytesIO(img_response.content))
                         st.image(image_raw, caption=f"🎨 Tác phẩm đỉnh cao từ lõi FLUX: {user_input}")
                         
                         # Mã hóa chuỗi nhị phân sang Base64 để ghi vĩnh viễn lên mây Supabase
                         img_str = base64.b64encode(img_response.content).decode()
                         db_payload = f"data:image/png;base64,{img_str}"
-                        
                         st.session_state[pages_key][current_page].append({"role": "assistant", "content": db_payload})
                         upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
                         status.update(label="🎨 Siêu lõi FLUX đã hoàn thành bức vẽ nghệ thuật xuất sắc!", state="complete")
                     else:
-                        # Kích hoạt Cổng dự phòng tối ưu nếu máy chủ Hugging Face bận
-                        encoded_p = urllib.parse.quote(english_prompt)
-                        backup_url = f"https://pollinations.ai{encoded_p}?width=1024&height=1024&nologo=true&seed={secrets.randbelow(99999)}"
-                        backup_res = requests.get(backup_url, timeout=25)
+                        # VÁ LỖI TẬN GỐC: Kích hoạt Cổng dự phòng gửi ngầm dữ liệu an toàn qua urllib tách biệt host
+                        backup_base = "https://pollinations.ai"
+                        safe_prompt = urllib.parse.quote(english_prompt)
+                        final_backup_url = f"{backup_base}{safe_prompt}?width=1024&height=1024&nologo=true&seed={secrets.randbelow(99999)}"
                         
+                        backup_res = requests.get(final_backup_url, timeout=30)
                         if backup_res.status_code == 200:
                             image_raw = Image.open(io.BytesIO(backup_res.content))
                             st.image(image_raw, caption=f"🎨 Tác phẩm hoàn thành (Cổng tối ưu): {user_input}")
                             
                             img_str = base64.b64encode(backup_res.content).decode()
                             db_payload = f"data:image/png;base64,{img_str}"
-                            
                             st.session_state[pages_key][current_page].append({"role": "assistant", "content": db_payload})
                             upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
-                            status.update(label="🎨 Đã hoàn thành bức vẽ nghệ thuật qua cổng tối ưu hóa!", state="complete")
+                            status.update(label="🎨 Đã hoàn thành bức vẽ nghệ thuật qua cổng tối ưu hóa dữ liệu!", state="complete")
                         else:
-                            raise Exception("Cả hai cổng sinh ảnh đều đang bận xử lý.")
-                            
+                            raise Exception("Cả hai cổng sinh ảnh đám mây hiện tại đều đang bận xử lý.")
                 except Exception as img_err:
                     status.update(label="❌ Lỗi tạo ảnh!", state="error")
                     st.markdown(f"Hệ thống không thể vẽ ảnh lúc này: {img_err}")
@@ -439,7 +431,6 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
         # 2. LUỒNG XỬ LÝ VĂN BẢN VÀ TRA CỨU WEB MẶC ĐỊNH SỬ DỤNG DUY NHẤT LÕI GEMINI 3.6
         cache_hit = False
         cached_answer = ""
-        
         if not uploaded_file:
             current_embedding = get_embedding(user_input)
             if current_embedding is not None:
@@ -472,7 +463,6 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                 "bản cập nhật", "vừa ra mắt", "ios", "android", "review", "đập hộp", "mở bán", "update", "thông số", "mô hình"
             ]
             need_web = any(word in cau_hoi_clean for word in keywords)
-
             combined_context = ""
             sources = []
             
@@ -514,7 +504,6 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                         for chunk in response_stream: yield chunk.text
 
                     ai_response = st.write_stream(response_generator())
-                    
                     if sources:
                         source_text = "\n\n---\n🌐 **Nguồn liên kết tham cứu:**\n" + "\n".join([f"- {src}" for src in sources])
                         st.markdown(source_text)
