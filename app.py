@@ -105,7 +105,7 @@ except:
 if "ai_client" not in st.session_state:
     try:
         st.session_state.ai_client = genai.Client(api_key=API_KEY)
-        st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-2.5-flash")
+        st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
     except Exception as e:
         st.error(f"Lỗi khởi tạo bộ não AI: {e}")
 def search_the_web_ddg(query, max_results=3):
@@ -149,7 +149,7 @@ with st.sidebar:
         st.download_button(label="📥 Tải lịch sử chat (.txt)", data=chat_history_text, file_name="AI_Chat_History.txt", mime="text/plain", use_container_width=True)
         if st.button("🗑️ Xóa cuộc trò chuyện", use_container_width=True):
             st.session_state.messages = []
-            st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-2.5-flash")
+            st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
             st.rerun()
 
 # Hiển thị lại toàn bộ lịch sử các tin nhắn cũ từ session_state
@@ -193,7 +193,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
             try:
                 if uploaded_file:
                     response = st.session_state.ai_client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-3.6-flash',
                         contents=[Image.open(uploaded_file), prompt_payload],
                         config=types.GenerateContentConfig(temperature=creativity)
                     )
