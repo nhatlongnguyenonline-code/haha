@@ -6,6 +6,3 @@ requests
 Pillow
 numpy
 bcrypt
-authlib
-httpx
-extra-streamlit-components
