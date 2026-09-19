@@ -105,7 +105,7 @@ except:
 if "ai_client" not in st.session_state:
     try:
         st.session_state.ai_client = genai.Client(api_key=API_KEY)
-        st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
+        st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-2.5-flash")
     except Exception as e:
         st.error(f"Lỗi khởi tạo bộ não AI: {e}")
 def search_the_web_ddg(query, max_results=3):
@@ -149,16 +149,21 @@ with st.sidebar:
         st.download_button(label="📥 Tải lịch sử chat (.txt)", data=chat_history_text, file_name="AI_Chat_History.txt", mime="text/plain", use_container_width=True)
         if st.button("🗑️ Xóa cuộc trò chuyện", use_container_width=True):
             st.session_state.messages = []
-            st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
+            st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-2.5-flash")
             st.rerun()
 
+# Hiển thị lại toàn bộ lịch sử các tin nhắn cũ từ session_state
 for message in st.session_state.messages:
     avt_emoji = "👤" if message["role"] == "user" else "🐦‍🔥"
-    with st.chat_message(message["role"], avatar=avt_emoji): st.markdown(message["content"])
+    with st.chat_message(message["role"], avatar=avt_emoji): 
+        st.markdown(message["content"])
 
+# Nhận tin nhắn mới từ người dùng
 if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
+    # Lưu và hiển thị ngay lập tức câu hỏi của User
     st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user", avatar="👤"): st.markdown(user_input)
+    with st.chat_message("user", avatar="👤"): 
+        st.markdown(user_input)
 
     cau_hoi_clean = user_input.lower().strip()
     keywords = ["ở đâu", "thành phố", "giá", "thời tiết", "mấy độ", "bao nhiêu", "hôm nay", "tin tức", "ai là", "sự kiện", "trường thcs", "là gì", "dịch", "nghĩa là gì"]
@@ -167,6 +172,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
     combined_context = ""
     sources = []
     
+    # Tra cứu Internet nếu phát hiện từ khóa cần thiết
     if need_web and not uploaded_file:
         with st.status("🔍 Đang kết nối mạng và tra cứu thông tin thực tế rộng...", expanded=False) as status:
             web_links = search_the_web_ddg(user_input)
@@ -180,13 +186,14 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
 
     prompt_payload = f"[HỆ THỐNG]: Dựa trên dữ liệu thực tế Internet: {combined_context}\nCÂU HỎI NGƯỜI DÙNG: {user_input}" if combined_context else user_input
 
+    # Tạo khung bong bóng hội thoại cho AI và xử lý sinh nội dung
     with st.chat_message("assistant", avatar="🐦‍🔥"):
         message_placeholder = st.empty()
         with st.spinner("🤖 AI đang suy nghĩ..."):
             try:
                 if uploaded_file:
                     response = st.session_state.ai_client.models.generate_content(
-                        model='gemini-3.6-flash',
+                        model='gemini-2.5-flash',
                         contents=[Image.open(uploaded_file), prompt_payload],
                         config=types.GenerateContentConfig(temperature=creativity)
                     )
@@ -197,8 +204,11 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                 if sources: 
                     ai_response += "\n\n---\n🌐 **Nguồn liên kết tham cứu:**\n" + "\n".join([f"- {src}" for src in sources])
                 
+                # In trực tiếp kết quả ra màn hình thông qua placeholder
                 message_placeholder.markdown(ai_response)
+                
+                # Lưu câu trả lời của AI vào bộ nhớ lịch sử
                 st.session_state.messages.append({"role": "assistant", "content": ai_response})
-                st.rerun()
+                
             except Exception as e:
                 message_placeholder.markdown(f"❌ Hệ thống bận: {e}. Bạn vui lòng thử gõ lại câu hỏi nhé!")
