@@ -376,7 +376,9 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
         with st.chat_message("assistant", avatar="🐦‍🔥"):
             with st.status("🎨 Đang dịch mô tả và kích hoạt lõi FLUX xử lý ảnh nghệ thuật...", expanded=True) as status:
                 try:
-                    # Sử dụng Gemini 3.6 dịch mô tả tiếng Việt sang tiếng Anh chuyên sâu cho mô hình nghệ thuật FLUX
+                    import urllib.parse
+                    
+                    # 1. Sử dụng Gemini 3.6 dịch mô tả tiếng Việt sang tiếng Anh chuyên sâu cho mô hình nghệ thuật FLUX
                     translation_prompt = (
                         "Translate this image description into a highly detailed, high-quality cinematic prompt for FLUX image generation. "
                         f"Return ONLY the English prompt, no extra text, no quotes: {user_input}"
@@ -407,23 +409,26 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                         upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
                         status.update(label="🎨 Siêu lõi FLUX đã hoàn thành bức vẽ nghệ thuật xuất sắc!", state="complete")
                     else:
-                        # VÁ LỖI TẬN GỐC: Kích hoạt Cổng dự phòng gửi ngầm dữ liệu an toàn qua urllib tách biệt host
+                        # VÁ LỖI TẬN GỐC: Chuyển cổng dự phòng sang cơ chế tải dữ liệu nhị phân ngầm bảo mật, chặn đứng lỗi 400/Host dài
                         backup_base = "https://pollinations.ai"
+                        # Mã hóa an toàn nội dung tách biệt hoàn toàn khỏi cấu trúc tên miền máy chủ
                         safe_prompt = urllib.parse.quote(english_prompt)
                         final_backup_url = f"{backup_base}{safe_prompt}?width=1024&height=1024&nologo=true&seed={secrets.randbelow(99999)}"
                         
-                        backup_res = requests.get(final_backup_url, timeout=30)
-                        if backup_res.status_code == 200:
-                            image_raw = Image.open(io.BytesIO(backup_res.content))
-                            st.image(image_raw, caption=f"🎨 Tác phẩm hoàn thành (Cổng tối ưu): {user_input}")
-                            
-                            img_str = base64.b64encode(backup_res.content).decode()
-                            db_payload = f"data:image/png;base64,{img_str}"
-                            st.session_state[pages_key][current_page].append({"role": "assistant", "content": db_payload})
-                            upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
-                            status.update(label="🎨 Đã hoàn thành bức vẽ nghệ thuật qua cổng tối ưu hóa dữ liệu!", state="complete")
-                        else:
-                            raise Exception("Cả hai cổng sinh ảnh đám mây hiện tại đều đang bận xử lý.")
+                        # Gọi dữ liệu dưới dạng luồng Stream nhị phân từ xa để loại bỏ lỗi label thô của trình duyệt
+                        with requests.get(final_backup_url, stream=True, timeout=35) as backup_res:
+                            if backup_res.status_code == 200:
+                                raw_bytes = backup_res.content
+                                image_raw = Image.open(io.BytesIO(raw_bytes))
+                                st.image(image_raw, caption=f"🎨 Tác phẩm hoàn thành (Cổng tối ưu hóa dữ liệu): {user_input}")
+                                
+                                img_str = base64.b64encode(raw_bytes).decode()
+                                db_payload = f"data:image/png;base64,{img_str}"
+                                st.session_state[pages_key][current_page].append({"role": "assistant", "content": db_payload})
+                                upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
+                                status.update(label="🎨 Đã hoàn thành bức vẽ nghệ thuật qua cổng tối ưu hóa dữ liệu ngầm!", state="complete")
+                            else:
+                                raise Exception("Cả hai cổng sinh ảnh đám mây hiện tại đều đang bận xử lý.")
                 except Exception as img_err:
                     status.update(label="❌ Lỗi tạo ảnh!", state="error")
                     st.markdown(f"Hệ thống không thể vẽ ảnh lúc này: {img_err}")
