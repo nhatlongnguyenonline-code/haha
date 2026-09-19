@@ -161,7 +161,7 @@ if logged_in_user is None:
         if st.button("Đăng Nhập Khách", use_container_width=True, type="primary"):
             res = supabase.table("users").select("*").eq("username", lin_user).execute()
             if res.data:
-                user_data = res.data[0]
+                user_data = res.data[0] if isinstance(res.data, list) else res.data
                 if bcrypt.checkpw(lin_pass.encode('utf-8'), user_data["password"].encode('utf-8')):
                     secure_token = secrets.token_urlsafe(16)
                     st.session_state.global_token_registry[secure_token] = lin_user
@@ -352,7 +352,7 @@ st.markdown(f"""
         <span class="premium-logo">🐦‍🔥</span>
         <span class="premium-text">TRỢ LÝ AI TOÀN NĂNG</span>
     </div>
-    <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6, Tạo ảnh Imagen 3 và Đám mây Supabase</div>
+    <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6 và Đám mây Supabase an toàn 100%</div>
 """, unsafe_allow_html=True)
 
 # Hiển thị lịch sử hội thoại (Xử lý thông minh nếu tin nhắn là ảnh dạng Base64)
@@ -360,8 +360,8 @@ for message in st.session_state[pages_key][current_page]:
     avt_emoji = "👤" if message["role"] == "user" else "🐦‍🔥"
     with st.chat_message(message["role"], avatar=avt_emoji):
         if message["content"].startswith("data:image/png;base64,"):
-            base64_data = message["content"].split(",")[1]
-            img_bytes = base64.b64decode(base64_data)
+            base64_data = message["content"].split(",")
+            img_bytes = base64.b64decode(base64_data[1] if len(base64_data) > 1 else base64_data[0])
             st.image(Image.open(io.BytesIO(img_bytes)))
         else:
             st.markdown(message["content"])
@@ -372,41 +372,35 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
 
     cau_hoi_clean = user_input.lower().strip()
     
-    # 1. BỘ LỌC TỪ KHÓA ĐỂ KÍCH HOẠT SIÊU LÕI TẠO ẢNH IMAGEN 3 TỰ ĐỘNG
+    # 1. BỘ LỌC TỪ KHÓA ĐỂ KÍCH HOẠT ĐỘNG CƠ SINH ẢNH MIỄN PHÍ QUA CỔNG PYTHON
     image_keywords = ["vẽ", "tạo ảnh", "tạo hình", "bức tranh", "bức ảnh", "hình ảnh về", "vẽ tranh", "generate image", "create an image"]
     is_image_request = any(word in cau_hoi_clean for word in image_keywords)
 
     if is_image_request and not uploaded_file:
         with st.chat_message("assistant", avatar="🐦‍🔥"):
-            with st.status("🎨 Đang khởi động Imagen 3 và tiến hành phác thảo bức tranh của bạn...", expanded=True) as status:
+            with st.status("🎨 Đang kích hoạt cổng sinh ảnh nghệ thuật và phác thảo bức vẽ của bạn...", expanded=True) as status:
                 try:
-                    result = st.session_state.ai_client.models.generate_images(
-                        model='imagen-3.0-generate-002',
-                        prompt=user_input,
-                        config=types.GenerateImagesConfig(
-                            number_of_images=1,
-                            output_mime_type="image/png",
-                            aspect_ratio="1:1"
-                        )
-                    )
-                    for generated_image in result.generated_images:
-                        image_raw = Image.open(io.BytesIO(generated_image.image.image_bytes))
+                    encoded_prompt = requests.utils.quote(user_input)
+                    img_url = f"https://pollinations.ai{encoded_prompt}?width=1024&height=1024&nologo=true"
+                    
+                    img_response = requests.get(img_url, timeout=15)
+                    if img_response.status_code == 200:
+                        image_raw = Image.open(io.BytesIO(img_response.content))
                         st.image(image_raw, caption=f"Bức tranh vẽ theo yêu cầu: {user_input}")
                         
-                        # Mã hóa bức ảnh thành chuỗi chuỗi ký tự Base64 để đồng bộ lưu trữ vĩnh viễn lên Supabase
-                        buffered = io.BytesIO()
-                        image_raw.save(buffered, format="PNG")
-                        img_str = base64.b64encode(buffered.getvalue()).decode()
+                        img_str = base64.b64encode(img_response.content).decode()
                         db_payload = f"data:image/png;base64,{img_str}"
                         
                         st.session_state[pages_key][current_page].append({"role": "assistant", "content": db_payload})
                         upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
-                    status.update(label="🎨 Đã hoàn thành bức vẽ nghệ thuật!", state="complete")
+                        status.update(label="🎨 Đã hoàn thành bức vẽ nghệ thuật hoàn toàn miễn phí!", state="complete")
+                    else:
+                        raise Exception("Cổng API sinh ảnh phản hồi không thành công.")
                 except Exception as img_err:
                     status.update(label="❌ Lỗi tạo ảnh!", state="error")
                     st.markdown(f"Hệ thống không thể vẽ ảnh lúc này: {img_err}")
     else:
-        # 2. LUỒNG XỬ LÝ VĂN BẢN VÀ TRA CỨU WEB MẶC ĐỊNH CỦA GEMINI 3.6
+        # 2. LUỒNG XỬ LÝ VĂN BẢN VÀ TRA CỨU WEB MẶC ĐỊNH SỬ DỤNG DUY NHẤT LÕI GEMINI 3.6
         cache_hit = False
         cached_answer = ""
         
