@@ -378,15 +378,20 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
 
     if is_image_request and not uploaded_file:
         with st.chat_message("assistant", avatar="🐦‍🔥"):
-            with st.status("🎨 Đang kích hoạt cổng sinh ảnh nghệ thuật và phác thảo bức vẽ của bạn...", expanded=True) as status:
+            with st.status("🎨 Đang kết nối cổng vẽ tranh và xử lý ảnh nghệ thuật miễn phí...", expanded=True) as status:
                 try:
-                    encoded_prompt = requests.utils.quote(user_input)
+                    import urllib.parse
+                    # SỬA LỖI: Loại bỏ hoàn toàn ký tự xuống dòng và khoảng trống thừa làm hỏng URL
+                    clean_prompt = user_input.replace("\n", " ").replace("\r", " ").strip()
+                    encoded_prompt = urllib.parse.quote(clean_prompt)
+                    
+                    # SỬA LỖI: Đảm bảo dấu gạch chéo phân tách đúng tên miền gốc
                     img_url = f"https://pollinations.ai{encoded_prompt}?width=1024&height=1024&nologo=true"
                     
-                    img_response = requests.get(img_url, timeout=15)
+                    img_response = requests.get(img_url, timeout=20)
                     if img_response.status_code == 200:
                         image_raw = Image.open(io.BytesIO(img_response.content))
-                        st.image(image_raw, caption=f"Bức tranh vẽ theo yêu cầu: {user_input}")
+                        st.image(image_raw, caption=f"🎨 Tác phẩm vẽ theo yêu cầu: {clean_prompt}")
                         
                         img_str = base64.b64encode(img_response.content).decode()
                         db_payload = f"data:image/png;base64,{img_str}"
@@ -395,7 +400,7 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                         upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
                         status.update(label="🎨 Đã hoàn thành bức vẽ nghệ thuật hoàn toàn miễn phí!", state="complete")
                     else:
-                        raise Exception("Cổng API sinh ảnh phản hồi không thành công.")
+                        raise Exception(f"Cổng API phản hồi mã lỗi {img_response.status_code}")
                 except Exception as img_err:
                     status.update(label="❌ Lỗi tạo ảnh!", state="error")
                     st.markdown(f"Hệ thống không thể vẽ ảnh lúc này: {img_err}")
@@ -495,3 +500,4 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                             })
                 except Exception as e:
                     st.markdown(f"❌ Hệ thống bận: {e}. Bạn vui lòng thử lại nhé!")
+
