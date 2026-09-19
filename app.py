@@ -6,6 +6,7 @@ import httpx
 import time
 import json
 import bcrypt
+import secrets  # Thêm thư viện mã hóa sinh Token bảo mật ngẫu nhiên
 import numpy as np
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
@@ -88,10 +89,20 @@ def get_embedding(text):
         return response.embeddings.values
     except: return None
 
-# --- KIỂM TRA PHIÊN ĐĂNG NHẬP QUA THAM SỐ URL ---
-url_params = st.query_params
-logged_in_user = url_params.get("user", None)
+# Khởi tạo bộ lưu trữ Token bảo mật toàn cục của server
+if "global_token_registry" not in st.session_state:
+    st.session_state.global_token_registry = {} # Lưu cấu trúc: {"secure_token": "username"}
 
+# Đọc mã Token bảo mật trên thanh địa chỉ URL
+url_params = st.query_params
+current_url_token = url_params.get("token", None)
+
+# Xác định danh tính dựa trên Token và so khớp bộ nhớ phiên an toàn
+logged_in_user = None
+if current_url_token and current_url_token in st.session_state.global_token_registry:
+    logged_in_user = st.session_state.global_token_registry[current_url_token]
+
+# Giao diện Khóa đăng nhập an toàn
 if logged_in_user is None:
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
     tab1, tab2 = st.tabs(["🔒 Đăng Nhập", "📝 Đăng Ký Tài Khoản"])
@@ -105,7 +116,10 @@ if logged_in_user is None:
                 stored_val = user_db[lin_user]
                 stored_pass = stored_val["password"] if isinstance(stored_val, dict) else stored_val
                 if bcrypt.checkpw(lin_pass.encode('utf-8'), stored_pass.encode('utf-8')):
-                    st.query_params["user"] = lin_user
+                    # Sinh mã Token ngẫu nhiên mã hóa bảo mật cao cao cấp
+                    secure_token = secrets.token_urlsafe(16)
+                    st.session_state.global_token_registry[secure_token] = lin_user
+                    st.query_params["token"] = secure_token  # Đưa token thay vì đưa username lên URL
                     st.success(f"🎉 Chào mừng {lin_user} quay trở lại!")
                     st.rerun()
                 else: st.error("❌ Sai mật khẩu, vui lòng kiểm tra lại.")
@@ -195,6 +209,9 @@ with st.sidebar:
                 st.rerun()
                 
     if st.button("🚪 Đăng Xuất Hệ Thống", use_container_width=True, type="secondary"):
+        # Dọn dẹp Token khỏi registry toàn cục khi đăng xuất nhằm bảo mật tuyệt đối
+        if current_url_token in st.session_state.global_token_registry:
+            del st.session_state.global_token_registry[current_url_token]
         st.query_params.clear()
         st.rerun()
     st.markdown("---")
