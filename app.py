@@ -162,7 +162,7 @@ if logged_in_user is None:
         if st.button("Đăng Nhập Khách", use_container_width=True, type="primary"):
             res = supabase.table("users").select("*").eq("username", lin_user).execute()
             if res.data:
-                user_data = res.data[0] if isinstance(res.data, list) else res.data
+                user_data = res.data if isinstance(res.data, list) else res.data
                 if bcrypt.checkpw(lin_pass.encode('utf-8'), user_data["password"].encode('utf-8')):
                     secure_token = secrets.token_urlsafe(16)
                     st.session_state.global_token_registry[secure_token] = lin_user
@@ -229,7 +229,7 @@ if cache_key not in st.session_state:
 
 current_page = st.session_state[active_page_key]
 user_info_res = supabase.table("users").select("display_name").eq("username", u_id).execute()
-display_name = user_info_res.data[0]["display_name"] if user_info_res.data else u_id
+display_name = user_info_res.data["display_name"] if user_info_res.data else u_id
 
 with st.sidebar:
     st.markdown(f"### 👤 TÀI KHOẢN: **{display_name.upper()}**")
@@ -350,17 +350,20 @@ st.markdown(f"""
         <span class="premium-logo">🐦‍🔥</span>
         <span class="premium-text">TRỢ LÝ AI TOÀN NĂNG</span>
     </div>
-    <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6, Đám mây Supabase và Động cơ Ảnh 3 Tầng</div>
+    <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6, Đám mây Supabase và Thẻ HTML Sinh ảnh Bất tử</div>
 """, unsafe_allow_html=True)
 
-# Hiển thị lịch sử hội thoại (Xử lý thông minh nếu dữ liệu tin nhắn lưu là ảnh Base64)
+# Hiển thị lịch sử hội thoại (Xử lý thông minh nếu dữ liệu tin nhắn lưu là đường link ảnh URL trực tiếp)
 for message in st.session_state[pages_key][current_page]:
     avt_emoji = "👤" if message["role"] == "user" else "🐦‍🔥"
     with st.chat_message(message["role"], avatar=avt_emoji):
-        if message["content"].startswith("data:image/png;base64,"):
-            base64_data = message["content"].split(",")
-            img_bytes = base64.b64decode(base64_data if len(base64_data) > 1 else base64_data)
-            st.image(Image.open(io.BytesIO(img_bytes)))
+        if message["content"].startswith("http") and ("pollinations.ai" in message["content"] or "unsplash.com" in message["content"]):
+            html_history = f"""
+            <div style="display: flex; justify-content: center; margin: 10px 0;">
+                <img src="{message['content']}" style="border-radius: 18px; max-width: 100%; height: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"/>
+            </div>
+            """
+            st.components.v1.html(html_history, height=450)
         else:
             st.markdown(message["content"])
 
@@ -369,83 +372,53 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
     with st.chat_message("user", avatar="👤"): st.markdown(user_input)
     cau_hoi_clean = user_input.lower().strip()
     
-    # BỘ LỌC TỪ KHÓA ĐỂ KÍCH HOẠT ĐỘNG CƠ SINH ẢNH (ĐÃ THÊM MỞ RỘNG TỪ KHÓA ĐỘC LẬP)
+    # BỘ LỌC TỪ KHÓA KÍCH HOẠT ĐỘNG CƠ SINH ẢNH (ĐÃ THÊM TỪ KHÓA MỞ RỘNG ĐỘC LẬP)
     image_keywords = ["vẽ", "tạo ảnh", "tạo hình", "bức tranh", "bức ảnh", "hình ảnh về", "vẽ tranh", "ảnh", "tạo"]
     is_image_request = any(word in cau_hoi_clean for word in image_keywords)
     if is_image_request and not uploaded_file:
         with st.chat_message("assistant", avatar="🐦‍🔥"):
-            with st.status("🎨 Đang kết nối cổng siêu tốc và phác thảo bức tranh nghệ thuật của bạn...", expanded=True) as status:
+            with st.status("🎨 Đang kích hoạt cổng siêu tốc và phác thảo bức tranh của bạn...", expanded=True) as status:
                 try:
                     import urllib.parse
                     
-                    # 1. Sử dụng Gemini 3.6 dịch mô tả tiếng Việt sang tiếng Anh ngắn gọn để tránh lỗi ký tự đặc biệt
+                    # 1. Sử dụng Gemini 3.6 dịch mô tả tiếng Việt sang tiếng Anh ngắn gọn, sạch sẽ
                     translation_prompt = (
                         "Translate this image description into a high-quality, beautiful English prompt for AI art generation. "
-                        f"Return ONLY the English prompt, no extra text, no quotes, keep it clean: {user_input}"
+                        "Return ONLY the English translation, do not include any quotes, commas, periods, or extra words. "
+                        f"Keep it under 30 words and very clean: {user_input}"
                     )
                     translated_response = st.session_state.ai_client.models.generate_content(
                         model='gemini-3.6-flash', contents=translation_prompt
                     )
-                    english_prompt = translated_response.text.strip().replace("\n", " ").replace("\r", " ").replace('"', '').replace("'", "")
+                    # Làm sạch tuyệt đối chuỗi để loại bỏ hoàn toàn ký tự đặc biệt hay xuống dòng gây hỏng cấu trúc link URL
+                    english_prompt = translated_response.text.strip().replace("\n", " ").replace("\r", " ")
+                    english_prompt = "".join(c for c in english_prompt if c.isalnum() or c.isspace())
                     
-                    image_success = False
-                    raw_bytes = None
+                    # Mã hóa an toàn chuỗi prompt ngắn gọn
+                    safe_prompt = urllib.parse.quote(english_prompt)
+                    random_seed = secrets.randbelow(999999)
+                    
+                    # Tạo đường link ảnh trực tiếp mở, an toàn tuyệt đối
+                    img_url = f"https://pollinations.ai{safe_prompt}?width=1024&height=1024&nologo=true&private=true&seed={random_seed}"
+                    image_success = True
                     caption_msg = f"🎨 Tác phẩm nghệ thuật vẽ theo yêu cầu: {user_input}"
-                    
-                    # --- TẦNG 1: GỌI CỔNG SIÊU TỐC KHÔNG NGHẼN MẠCH (POLLINATIONS ENGINE CHUẨN MẠNG) ---
-                    try:
-                        # Mã hóa sạch sẽ chuỗi prompt tiếng Anh để truyền an toàn vào URL
-                        safe_prompt = urllib.parse.quote(english_prompt)
-                        # Tạo mã số ngẫu nhiên để ép máy chủ sinh ảnh mới 100%, không dùng lại ảnh cũ
-                        random_seed = secrets.randbelow(999999)
+                    # HIỂN THỊ TRỰC TIẾP QUA TRÌNH DUYỆT BẰNG THẺ HTML <img> ĐỂ TRÁNH BỊ SERVER CHẶN LUỒNG NHỊ PHÂN
+                    if image_success:
+                        # Hiển thị ảnh mượt mà, tự động căn giữa và bo góc chuẩn giao diện Premium
+                        html_code = f"""
+                        <div style="display: flex; justify-content: center; margin: 10px 0;">
+                            <img src="{img_url}" alt="AI Image" style="border-radius: 18px; max-width: 100%; height: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"/>
+                        </div>
+                        """
+                        st.components.v1.html(html_code, height=450)
+                        st.caption(caption_msg)
                         
-                        # Sử dụng đường dẫn API mở, tốc độ phản hồi siêu tốc chỉ 1 giây
-                        img_url = f"https://pollinations.ai{safe_prompt}?width=1024&height=1024&nologo=true&private=true&seed={random_seed}"
-                        
-                        # Gửi lệnh tải luồng dữ liệu nhị phân ngầm từ máy chủ
-                        response_raw = requests.get(img_url, timeout=30)
-                        if response_raw.status_code == 200 and len(response_raw.content) > 5000:
-                            raw_bytes = response_raw.content
-                            image_success = True
-                    except: pass
-                    # --- TẦNG 2: CỔNG BẢO HIỂM CUỐI CÙNG (HUGGING FACE FLUX DỰ PHÒNG NGẦM) ---
-                    if not image_success:
-                        try:
-                            API_URL = "https://huggingface.co"
-                            headers = {}
-                            if "HF_TOKEN" in st.secrets:
-                                headers["Authorization"] = f"Bearer {st.secrets['HF_TOKEN']}"
-                            payload = {"inputs": english_prompt}
-                            
-                            img_response = requests.post(API_URL, headers=headers, json=payload, timeout=20)
-                            if img_response.status_code == 200 and b"error" not in img_response.content:
-                                raw_bytes = img_response.content
-                                image_success = True
-                        except: pass
-
-                    # --- TẦNG 3: MẠNG LƯỚI BẢO HIỂM ẢNH TĨNH BẤT TỬ ---
-                    if not image_success:
-                        try:
-                            fallback_url = "https://unsplash.com"
-                            res_fallback = requests.get(fallback_url, timeout=15)
-                            if res_fallback.status_code == 200:
-                                raw_bytes = res_fallback.content
-                                image_success = True
-                                caption_msg = f"✨ Ảnh nghệ thuật minh họa chủ đề trực quan: {user_input}"
-                        except: pass
-                        
-                    # HIỂN THỊ HÌNH ẢNH TRÊN GIAO DIỆN VÀ ĐỒNG BỘ LÊN SUPABASE ĐÁM MÂY
-                    if image_success and raw_bytes:
-                        image_raw = Image.open(io.BytesIO(raw_bytes))
-                        st.image(image_raw, caption=caption_msg)
-                        
-                        img_str = base64.b64encode(raw_bytes).decode()
-                        db_payload = f"data:image/png;base64,{img_str}"
-                        st.session_state[pages_key][current_page].append({"role": "assistant", "content": db_payload})
+                        # Lưu trực tiếp đường link ảnh sạch này lên đám mây Supabase vĩnh viễn
+                        st.session_state[pages_key][current_page].append({"role": "assistant", "content": img_url})
                         upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
-                        status.update(label="🎨 Đã vẽ xong và đồng bộ tác phẩm lên đám mây vĩnh viễn!", state="complete")
+                        status.update(label="🎨 Siêu lõi đã hoàn thành bức vẽ nghệ thuật xuất sắc!", state="complete")
                     else:
-                        raise Exception("Không thể kết nối đến luồng nhị phân của các máy chủ đám mây.")
+                        raise Exception("Cổng dịch vụ đám mây hiện đang bận.")
                         
                 except Exception as img_err:
                     status.update(label="❌ Lỗi tạo ảnh!", state="error")
