@@ -105,8 +105,10 @@ if logged_in_user is None:
         lin_pass = st.text_input("Mật khẩu", type="password", key="lin_p")
         if st.button("Đăng Nhập Khách", use_container_width=True, type="primary"):
             if lin_user in user_db:
-                stored_hashed = user_db[lin_user].encode('utf-8')
-                if bcrypt.checkpw(lin_pass.encode('utf-8'), stored_hashed):
+                # Định dạng cũ có thể là chuỗi hoặc cấu trúc dict, băm mật khẩu chuẩn mã hóa
+                stored_val = user_db[lin_user]
+                stored_pass = stored_val["password"] if isinstance(stored_val, dict) else stored_val
+                if bcrypt.checkpw(lin_pass.encode('utf-8'), stored_pass.encode('utf-8')):
                     st.query_params["user"] = lin_user
                     st.success(f"🎉 Chào mừng {lin_user} quay trở lại!")
                     st.rerun()
@@ -123,7 +125,7 @@ if logged_in_user is None:
             elif reg_user in user_db: st.error("❌ Tên đăng nhập này đã được sử dụng.")
             else:
                 hashed_p = bcrypt.hashpw(reg_pass.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                user_db[reg_user] = hashed_p
+                user_db[reg_user] = {"password": hashed_p, "display_name": reg_user}
                 save_user_db(user_db)
                 st.success("📝 Đăng ký thành công! Hãy quay lại tab Đăng Nhập.")
                 
@@ -131,6 +133,9 @@ if logged_in_user is None:
         st.subheader("Đăng nhập nhanh an toàn")
         if st.button("🔴 Đăng nhập bằng Google", use_container_width=True):
             st.query_params["user"] = "google_user"
+            if "google_user" not in user_db:
+                user_db["google_user"] = {"password": "", "display_name": "Google User"}
+                save_user_db(user_db)
             st.success("🎉 Đăng nhập Google thành công!")
             st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
@@ -168,8 +173,44 @@ if cache_key not in st.session_state:
     st.session_state[cache_key] = []
 
 current_page = st.session_state[active_page_key]
+# Lấy tên hiển thị từ cơ sở dữ liệu ngầm, mặc định là ID tài khoản nếu là định dạng cũ
+if u_id in user_db and isinstance(user_db[u_id], dict):
+    display_name = user_db[u_id].get("display_name", u_id)
+else:
+    display_name = u_id
+
 with st.sidebar:
-    st.markdown(f"### 👤 TÀI KHOẢN: **{u_id.upper()}**")
+    st.markdown(f"### 👤 TÀI KHOẢN: **{display_name.upper()}**")
+    
+    # 🛠️ --- TÍCH HỢP NÚT ĐỔI TÊN HIỂN THỊ TÀI KHOẢN ---
+    if f"rename_user_mode_{u_id}" not in st.session_state:
+        st.session_state[f"rename_user_mode_{u_id}"] = False
+        
+    if not st.session_state[f"rename_user_mode_{u_id}"]:
+        if st.button("✏️ Đổi tên hiển thị", use_container_width=True):
+            st.session_state[f"rename_user_mode_{u_id}"] = True
+            st.rerun()
+    else:
+        new_name = st.text_input("Nhập tên hiển thị mới:", value=display_name)
+        col_u1, col_u2 = st.columns(2)
+        with col_u1:
+            if st.button("💾 Lưu tên", use_container_width=True, type="primary"):
+                if new_name.strip() != "":
+                    if u_id not in user_db or not isinstance(user_db[u_id], dict):
+                        # Khôi phục nếu cấu trúc cũ là chuỗi password thuần túy
+                        old_pass = user_db[u_id] if u_id in user_db else ""
+                        user_db[u_id] = {"password": old_pass, "display_name": new_name.strip()}
+                    else:
+                        user_db[u_id]["display_name"] = new_name.strip()
+                    
+                    save_user_db(user_db) # Đồng bộ ghi đè file lưu trữ ngay lập tức
+                st.session_state[f"rename_user_mode_{u_id}"] = False
+                st.rerun()
+        with col_u2:
+            if st.button("Cancel", use_container_width=True):
+                st.session_state[f"rename_user_mode_{u_id}"] = False
+                st.rerun()
+                
     if st.button("🚪 Đăng Xuất Hệ Thống", use_container_width=True, type="secondary"):
         st.query_params.clear()
         st.rerun()
@@ -192,7 +233,7 @@ with st.sidebar:
         st.session_state[active_page_key] = selected_page
         st.rerun()
         
-    # --- TÍNH NĂNG ĐỔI TÊN PHÒNG CHAT CHỦ ĐỘNG ---
+    # --- TÍNH NĂNG ĐỔI TÊN PHÒNG CHAT ---
     if f"rename_mode_{u_id}" not in st.session_state:
         st.session_state[f"rename_mode_{u_id}"] = False
         
@@ -210,13 +251,10 @@ with st.sidebar:
                     for k, v in st.session_state[pages_key].items():
                         if k == current_page: updated_pages[new_title.strip()] = v
                         else: updated_pages[k] = v
-                    
                     st.session_state[pages_key] = updated_pages
                     st.session_state[active_page_key] = new_title.strip()
-                    
                     all_histories[u_id] = updated_pages
                     save_all_chat_histories(all_histories)
-                    
                 st.session_state[f"rename_mode_{u_id}"] = False
                 st.rerun()
         with col_r2:
@@ -233,7 +271,6 @@ with st.sidebar:
     if uploaded_file: st.image(Image.open(uploaded_file), caption="Ảnh đã chọn", use_container_width=True)
     st.markdown("---")
     
-    # --- BỘ ĐÔI NÚT XÓA SONG SONG NẰM CÙNG MỘT DÒNG ---
     st.markdown("### 📂 NHẬT KÝ TRANG HIỆN TẠI")
     col1, col2 = st.columns(2)
     with col1:
@@ -250,8 +287,7 @@ with st.sidebar:
                 save_all_chat_histories(all_histories)
                 st.session_state[active_page_key] = list(st.session_state[pages_key].keys())[-1]
                 st.rerun()
-        else:
-            st.caption("🔒 Giữ lại 1 trang.")
+        else: st.caption("🔒 Giữ lại 1 trang.")
 def search_the_web_ddg(query, max_results=3):
     urls = []
     try:
