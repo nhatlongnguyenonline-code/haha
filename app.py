@@ -25,8 +25,6 @@ st.set_page_config(page_title="Trợ Lý AI Toàn Năng", page_icon="🐦‍🔥
 
 st.markdown("""
     <style>
-    /* XÓA HOÀN TOÀN THANH GRADIENT HAI BÊN KHỎI .stApp::before VÀ .stApp::after */
-    
     [data-testid="stSidebar"] { 
         background: linear-gradient(180deg, #F8FAFC 0%, #FFF7ED 100%) !important; 
         border-right: 1px solid #FED7AA !important; 
@@ -74,12 +72,9 @@ st.markdown("""
         color: white !important; 
         border-radius: 50% !important; 
     }
-    
-    /* SỬA LỖI: Chỉ ẩn icon SVG mặc định của Streamlit, giữ lại chữ tiêu đề hiển thị rõ ràng */
     [data-testid="stHeaderHeading"] svg, [data-testid="stElementContainer"] h1 svg { 
         display: none !important; 
     }
-    
     [data-testid="stChatMessageAvatar"] { 
         border-radius: 50% !important; 
         display: flex !important; 
@@ -155,7 +150,6 @@ logged_in_user = None
 if current_url_token and current_url_token in st.session_state.global_token_registry:
     logged_in_user = st.session_state.global_token_registry[current_url_token]
 
-# Giao diện Khóa đăng nhập an toàn kết nối Supabase
 if logged_in_user is None:
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
     tab1, tab2 = st.tabs(["🔒 Đăng Nhập", "📝 Đăng Ký Tài Khoản"])
@@ -214,7 +208,6 @@ def upload_single_page_supabase(username, page_name, data_list):
         "username": username, "page_name": page_name, "history_data": data_list
     }).execute()
 
-# --- LOGIC TỰ ĐỘNG TẢI/TẠO PHÒNG CHAT ĐỒNG BỘ VỚI ĐÁM MÂY ---
 if pages_key not in st.session_state:
     db_pages = download_supabase_history(u_id)
     if db_pages:
@@ -359,7 +352,7 @@ st.markdown(f"""
         <span class="premium-logo">🐦‍🔥</span>
         <span class="premium-text">TRỢ LÝ AI TOÀN NĂNG</span>
     </div>
-    <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6, Đám mây Supabase và Cổng ảnh Hugging Face</div>
+    <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6, Đám mây Supabase và Siêu lõi FLUX</div>
 """, unsafe_allow_html=True)
 
 # Hiển thị lịch sử hội thoại (Xử lý thông minh nếu dữ liệu tin nhắn lưu là ảnh Base64)
@@ -379,18 +372,18 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
 
     cau_hoi_clean = user_input.lower().strip()
     
-    # 1. BỘ LỌC TỪ KHÓA KÍCH HOẠT ĐỘNG CƠ SINH ẢNH MIỄN PHÍ QUA HUGGING FACE
+    # 1. BỘ LỌC TỪ KHÓA KÍCH HOẠT ĐỘNG CƠ SINH ẢNH MIỄN PHÍ QUA HUGGING FACE FLUX
     image_keywords = ["vẽ", "tạo ảnh", "tạo hình", "bức tranh", "bức ảnh", "hình ảnh về", "vẽ tranh", "generate image", "create an image"]
     is_image_request = any(word in cau_hoi_clean for word in image_keywords)
     if is_image_request and not uploaded_file:
         with st.chat_message("assistant", avatar="🐦‍🔥"):
-            with st.status("🎨 Đang dịch lệnh và gọi Hugging Face API sinh ảnh nghệ thuật vĩnh viễn...", expanded=True) as status:
+            with st.status("🎨 Đang dịch mô tả và kích hoạt lõi FLUX xử lý ảnh nghệ thuật...", expanded=True) as status:
                 try:
                     import urllib.parse
                     
-                    # Sử dụng Gemini 3.6 dịch mô tả sang tiếng Anh chuyên sâu cho Stable Diffusion
+                    # Sử dụng Gemini 3.6 dịch mô tả tiếng Việt sang tiếng Anh chuyên sâu cho mô hình nghệ thuật FLUX
                     translation_prompt = (
-                        "Translate this image description into a detailed, high-quality prompt for Stable Diffusion. "
+                        "Translate this image description into a highly detailed, high-quality cinematic prompt for FLUX image generation. "
                         f"Return ONLY the English prompt, no extra text, no quotes: {user_input}"
                     )
                     translated_response = st.session_state.ai_client.models.generate_content(
@@ -398,25 +391,47 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                     )
                     english_prompt = translated_response.text.strip().replace("\n", " ").replace("\r", " ")
                     
-                    # Gửi dữ liệu bằng Request POST bảo mật tuyệt đối, không nối link URL thô tránh lỗi Host
+                    # Sử dụng cổng API của siêu mô hình FLUX thế hệ mới
                     API_URL = "https://huggingface.co"
-                    headers = {"Authorization": f"Bearer {st.secrets['HF_TOKEN']}"}
+                    
+                    headers = {}
+                    if "HF_TOKEN" in st.secrets:
+                        headers["Authorization"] = f"Bearer {st.secrets['HF_TOKEN']}"
+                    
                     payload = {"inputs": english_prompt}
+                    img_response = requests.post(API_URL, headers=headers, json=payload, timeout=45)
                     
-                    img_response = requests.post(API_URL, headers=headers, json=payload, timeout=40)
-                    
-                    if img_response.status_code == 200:
+                    # Kiểm tra dữ liệu ảnh trả về
+                    if img_response.status_code == 200 and b"internal_server_error" not in img_response.content:
                         image_raw = Image.open(io.BytesIO(img_response.content))
-                        st.image(image_raw, caption=f"🎨 Tác phẩm Hugging Face hoàn thành: {user_input}")
+                        st.image(image_raw, caption=f"🎨 Tác phẩm đỉnh cao từ lõi FLUX: {user_input}")
                         
+                        # Mã hóa chuỗi nhị phân sang Base64 để ghi vĩnh viễn lên mây Supabase
                         img_str = base64.b64encode(img_response.content).decode()
                         db_payload = f"data:image/png;base64,{img_str}"
                         
                         st.session_state[pages_key][current_page].append({"role": "assistant", "content": db_payload})
                         upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
-                        status.update(label="🎨 Đã hoàn thành bức vẽ nghệ thuật qua Hugging Face!", state="complete")
+                        status.update(label="🎨 Siêu lõi FLUX đã hoàn thành bức vẽ nghệ thuật xuất sắc!", state="complete")
                     else:
-                        raise Exception(f"Hugging Face báo lỗi hệ thống: Mã trạng thái {img_response.status_code}")
+                        # Kích hoạt Cổng dự phòng tối ưu nếu máy chủ Hugging Face bận
+                        encoded_p = urllib.parse.quote(english_prompt)
+                        backup_url = f"https://pollinations.ai{encoded_p}?width=1024&height=1024&nologo=true&seed={secrets.randbelow(99999)}"
+                        backup_res = requests.get(backup_url, timeout=25)
+                        
+                        if backup_res.status_code == 200:
+                            image_raw = Image.open(io.BytesIO(backup_res.content))
+                            st.image(image_raw, caption=f"🎨 Tác phẩm hoàn thành (Cổng tối ưu): {user_input}")
+                            
+                            img_str = base64.b64encode(backup_res.content).decode()
+                            db_payload = f"data:image/png;base64,{img_str}"
+                            
+                            st.session_state[pages_key][current_page].append({"role": "assistant", "content": db_payload})
+                            upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
+                            status.update(label="🎨 Đã hoàn thành bức vẽ nghệ thuật qua cổng tối ưu hóa!", state="complete")
+                        else:
+                            raise Exception("Cả hai cổng sinh ảnh đều đang bận xử lý.")
+                            
                 except Exception as img_err:
                     status.update(label="❌ Lỗi tạo ảnh!", state="error")
                     st.markdown(f"Hệ thống không thể vẽ ảnh lúc này: {img_err}")
