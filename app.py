@@ -378,7 +378,7 @@ def extract_web_content(url):
 # KHÔI PHỤC HIỂN THỊ TIÊU ĐỀ THƯƠNG HIỆU LỚN KHÔNG BỊ KHUẤT CHỮ TRÊN TRANG CHÍNH
 st.markdown(f"""
     <div class="premium-title-container">
-        <span class="premium-logo">🦅</span>
+        <span class="premium-logo">🐦‍🔥</span>
         <span class="premium-text">TRỢ LÝ AI TOÀN NĂNG</span>
     </div>
     <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6 và Công cụ tra cứu Internet Tự động</div>
