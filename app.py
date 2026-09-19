@@ -188,27 +188,36 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
 
     # Tạo khung bong bóng hội thoại cho AI và xử lý sinh nội dung
     with st.chat_message("assistant", avatar="🐦‍🔥"):
-        message_placeholder = st.empty()
-        with st.spinner("🤖 AI đang suy nghĩ..."):
-            try:
+        try:
+            # Định nghĩa generator để Streamlit thu thập token từ API của Gemini
+            def response_generator():
                 if uploaded_file:
-                    response = st.session_state.ai_client.models.generate_content(
+                    response_stream = st.session_state.ai_client.models.generate_content_stream(
                         model='gemini-3.6-flash',
                         contents=[Image.open(uploaded_file), prompt_payload],
                         config=types.GenerateContentConfig(temperature=creativity)
                     )
                 else:
-                    response = st.session_state.chat_session.send_message(prompt_payload, config={"temperature": creativity})
+                    response_stream = st.session_state.chat_session.send_message_stream(
+                        prompt_payload, 
+                        config={"temperature": creativity}
+                    )
                 
-                ai_response = response.text.strip()
-                if sources: 
-                    ai_response += "\n\n---\n🌐 **Nguồn liên kết tham cứu:**\n" + "\n".join([f"- {src}" for src in sources])
-                
-                # In trực tiếp kết quả ra màn hình thông qua placeholder
-                message_placeholder.markdown(ai_response)
-                
-                # Lưu câu trả lời của AI vào bộ nhớ lịch sử
-                st.session_state.messages.append({"role": "assistant", "content": ai_response})
-                
-            except Exception as e:
-                message_placeholder.markdown(f"❌ Hệ thống bận: {e}. Bạn vui lòng thử gõ lại câu hỏi nhé!")
+                # Yield từng mảnh văn bản nhỏ trả về từ API ngay lập tức
+                for chunk in response_stream:
+                    yield chunk.text
+
+            # Đổ dữ liệu chạy chữ trực tiếp lên màn hình
+            ai_response = st.write_stream(response_generator())
+            
+            # Thêm thông tin nguồn bổ sung (nếu có) sau khi kết thúc stream
+            if sources:
+                source_text = "\n\n---\n🌐 **Nguồn liên kết tham cứu:**\n" + "\n".join([f"- {src}" for src in sources])
+                st.markdown(source_text)
+                ai_response += source_text
+            
+            # Lưu câu trả lời hoàn chỉnh của AI vào bộ nhớ lịch sử để duy trì hội thoại
+            st.session_state.messages.append({"role": "assistant", "content": ai_response})
+            
+        except Exception as e:
+            st.markdown(f"❌ Hệ thống bận: {e}. Bạn vui lòng thử gõ lại câu hỏi nhé!")
