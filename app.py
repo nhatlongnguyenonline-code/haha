@@ -388,7 +388,7 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                     )
                     english_prompt = translated_response.text.strip().replace("\n", " ").replace("\r", " ")
                     
-                    # Sử dụng cổng API của siêu mô hình FLUX thế hệ mới
+                    # Gọi cổng API của siêu mô hình FLUX thế hệ mới bằng giao thức POST dữ liệu ẩn
                     API_URL = "https://huggingface.co"
                     headers = {}
                     if "HF_TOKEN" in st.secrets:
@@ -409,26 +409,33 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                         upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
                         status.update(label="🎨 Siêu lõi FLUX đã hoàn thành bức vẽ nghệ thuật xuất sắc!", state="complete")
                     else:
-                        # VÁ LỖI TẬN GỐC: Chuyển cổng dự phòng sang cơ chế tải dữ liệu nhị phân ngầm bảo mật, chặn đứng lỗi 400/Host dài
-                        backup_base = "https://pollinations.ai"
-                        # Mã hóa an toàn nội dung tách biệt hoàn toàn khỏi cấu trúc tên miền máy chủ
-                        safe_prompt = urllib.parse.quote(english_prompt)
-                        final_backup_url = f"{backup_base}{safe_prompt}?width=1024&height=1024&nologo=true&seed={secrets.randbelow(99999)}"
+                        # VÁ LỖI TẬN GỐC: Chuyển cổng dự phòng sang cơ chế POST gửi dữ liệu ngầm JSON, triệt tiêu 100% lỗi URL thô dài
+                        backup_post_url = "https://pollinations.ai"
                         
-                        # Gọi dữ liệu dưới dạng luồng Stream nhị phân từ xa để loại bỏ lỗi label thô của trình duyệt
-                        with requests.get(final_backup_url, stream=True, timeout=35) as backup_res:
-                            if backup_res.status_code == 200:
-                                raw_bytes = backup_res.content
-                                image_raw = Image.open(io.BytesIO(raw_bytes))
-                                st.image(image_raw, caption=f"🎨 Tác phẩm hoàn thành (Cổng tối ưu hóa dữ liệu): {user_input}")
-                                
-                                img_str = base64.b64encode(raw_bytes).decode()
-                                db_payload = f"data:image/png;base64,{img_str}"
-                                st.session_state[pages_key][current_page].append({"role": "assistant", "content": db_payload})
-                                upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
-                                status.update(label="🎨 Đã hoàn thành bức vẽ nghệ thuật qua cổng tối ưu hóa dữ liệu ngầm!", state="complete")
-                            else:
-                                raise Exception("Cả hai cổng sinh ảnh đám mây hiện tại đều đang bận xử lý.")
+                        # Tạo cấu trúc payload POST ẩn, truyền dữ liệu kín đáo dưới nền máy chủ
+                        backup_payload = {
+                            "prompt": english_prompt,
+                            "width": 1024,
+                            "height": 1024,
+                            "nologo": True,
+                            "seed": secrets.randbelow(99999)
+                        }
+                        
+                        # Thực hiện lệnh POST nhị phân ngầm bảo mật hoàn toàn
+                        backup_res = requests.post(backup_post_url, json=backup_payload, timeout=35)
+                        
+                        if backup_res.status_code == 200:
+                            raw_bytes = backup_res.content
+                            image_raw = Image.open(io.BytesIO(raw_bytes))
+                            st.image(image_raw, caption=f"🎨 Tác phẩm hoàn thành (Cổng tối ưu hóa dữ liệu POST ẩn): {user_input}")
+                            
+                            img_str = base64.b64encode(raw_bytes).decode()
+                            db_payload = f"data:image/png;base64,{img_str}"
+                            st.session_state[pages_key][current_page].append({"role": "assistant", "content": db_payload})
+                            upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
+                            status.update(label="🎨 Đã hoàn thành bức vẽ nghệ thuật qua cổng dữ liệu ngầm an toàn!", state="complete")
+                        else:
+                            raise Exception("Cả hai cổng sinh ảnh đám mây hiện tại đều đang bận xử lý.")
                 except Exception as img_err:
                     status.update(label="❌ Lỗi tạo ảnh!", state="error")
                     st.markdown(f"Hệ thống không thể vẽ ảnh lúc này: {img_err}")
