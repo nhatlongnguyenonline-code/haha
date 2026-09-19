@@ -13,7 +13,6 @@ from google import genai
 from google.genai import types  
 from PIL import Image  
 import streamlit as st
-import extra_streamlit_components as stx  # Thêm thư viện quản lý Cookie trình duyệt
 
 warnings.filterwarnings("ignore")
 
@@ -51,13 +50,22 @@ st.markdown("""
 st.markdown('<div class="premium-title-container"><span class="premium-logo">🐦‍🔥</span><span class="premium-text">TRỢ LÝ AI TOÀN NĂNG</span></div>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Hệ thống đọc hiểu kiến thức, phân tích hình ảnh và tra cứu Internet</p>', unsafe_allow_html=True)
 
-# Khởi tạo trình quản lý Cookie ngầm
-cookie_manager = stx.CookieManager()
+# File lưu trữ cơ sở dữ liệu tài khoản vĩnh viễn trên Server để F5 không bị mất
+DB_FILE = "users_database.json"
 
-if "user_db" not in st.session_state:
-    st.session_state.user_db = {}
-if "current_user" not in st.session_state:
-    st.session_state.current_user = None
+def load_user_db():
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except: return {}
+    return {}
+
+def save_user_db(db_data):
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(db_data, f, ensure_ascii=False, indent=4)
+
+user_db = load_user_db()
 
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
@@ -77,18 +85,11 @@ def get_embedding(text):
         return response.embeddings.values
     except: return None
 
-# 🟢 --- SỬA LỖI TRỄ ĐỌC COOKIE KHI RESTART/F5 TRANG ---
-# Cho phép hệ thống dừng nghỉ 0.4 - 0.5 giây để JS kịp load nạp Cookie từ trình duyệt về
-if st.session_state.current_user is None:
-    time.sleep(0.5) 
-    saved_user = cookie_manager.get(cookie="user_login_session")
-    if saved_user:
-        try:
-            st.session_state.current_user = json.loads(saved_user)
-        except: pass
+# --- KIỂM TRA PHIÊN ĐĂNG NHẬP QUA THAM SỐ URL (100% KHÔNG BỊ VĂNG KHI F5) ---
+url_params = st.query_params
+logged_in_user = url_params.get("user", None)
 
-# Giao diện Đăng nhập nếu thực sự chưa đăng nhập
-if st.session_state.current_user is None:
+if logged_in_user is None:
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
     tab1, tab2, tab3 = st.tabs(["🔒 Đăng Nhập", "📝 Đăng Ký Tài Khoản", "🌐 Google Login"])
     
@@ -97,12 +98,10 @@ if st.session_state.current_user is None:
         lin_user = st.text_input("Tên đăng nhập", key="lin_u")
         lin_pass = st.text_input("Mật khẩu", type="password", key="lin_p")
         if st.button("Đăng Nhập Khách", use_container_width=True, type="primary"):
-            if lin_user in st.session_state.user_db:
-                hashed = st.session_state.user_db[lin_user]
-                if bcrypt.checkpw(lin_pass.encode('utf-8'), hashed):
-                    user_data = {"id": lin_user, "name": lin_user, "type": "custom"}
-                    st.session_state.current_user = user_data
-                    cookie_manager.set("user_login_session", json.dumps(user_data), max_age=604800)
+            if lin_user in user_db:
+                stored_hashed = user_db[lin_user].encode('utf-8')
+                if bcrypt.checkpw(lin_pass.encode('utf-8'), stored_hashed):
+                    st.query_params["user"] = lin_user
                     st.success(f"🎉 Chào mừng {lin_user} quay trở lại!")
                     st.rerun()
                 else: st.error("❌ Sai mật khẩu, vui lòng kiểm tra lại.")
@@ -115,24 +114,23 @@ if st.session_state.current_user is None:
         if st.button("Xác Nhận Đăng Ký", use_container_width=True):
             if reg_user.strip() == "" or reg_pass.strip() == "":
                 st.warning("⚠️ Không được để trống tài khoản hoặc mật khẩu.")
-            elif reg_user in st.session_state.user_db:
+            elif reg_user in user_db:
                 st.error("❌ Tên đăng nhập này đã được sử dụng.")
             else:
-                hashed_p = bcrypt.hashpw(reg_pass.encode('utf-8'), bcrypt.gensalt())
-                st.session_state.user_db[reg_user] = hashed_p
+                hashed_p = bcrypt.hashpw(reg_pass.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                user_db[reg_user] = hashed_p
+                save_user_db(user_db) # Ghi trực tiếp xuống file ổ cứng, F5 hoàn toàn không bị mất
                 st.success("📝 Đăng ký thành công! Hãy quay lại tab Đăng Nhập.")
                 
     with tab3:
         st.subheader("Đăng nhập nhanh an toàn")
         if st.button("🔴 Đăng nhập bằng Google", use_container_width=True):
-            user_data = {"id": "google_user_123", "name": "Người dùng Google", "type": "google"}
-            st.session_state.current_user = user_data
-            cookie_manager.set("user_login_session", json.dumps(user_data), max_age=604800)
+            st.query_params["user"] = "google_user"
             st.success("🎉 Đăng nhập Google thành công!")
             st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
-u_id = st.session_state.current_user["id"]
+u_id = logged_in_user
 pages_key = f"chat_pages_{u_id}"      
 active_page_key = f"active_page_{u_id}" 
 cache_key = f"cache_{u_id}"
@@ -167,13 +165,14 @@ def extract_web_content(url):
     return ""
 
 with st.sidebar:
-    st.markdown(f"### 👤 TÀI KHOẢN: **{st.session_state.current_user['name'].upper()}**")
-    if st.button("🚪 Đăng Xuất & Xóa Cookie Session", use_container_width=True, type="secondary"):
-        cookie_manager.delete("user_login_session")  
-        st.session_state.current_user = None
-        st.rerun()
-    st.markdown("---")
+    st.markdown(f"### 👤 TÀI KHOẢN: **{u_id.upper()}**")
     
+    # 🟢 SỬA LỖI ĐĂNG XUẤT KEYERROR: Xóa tham số URL an toàn không dùng thư viện ngoài
+    if st.button("🚪 Đăng Xuất Hệ Thống", use_container_width=True, type="secondary"):
+        st.query_params.clear()
+        st.rerun()
+        
+    st.markdown("---")
     st.markdown("### 💬 QUẢN LÝ PHÒNG CHAT")
     if st.button("➕ Tạo trang chat mới", use_container_width=True, type="primary"):
         new_page_index = len(st.session_state[pages_key]) + 1
