@@ -50,20 +50,31 @@ st.markdown("""
 st.markdown('<div class="premium-title-container"><span class="premium-logo">🐦‍🔥</span><span class="premium-text">TRỢ LÝ AI TOÀN NĂNG</span></div>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Hệ thống đọc hiểu kiến thức, phân tích hình ảnh và tra cứu Internet</p>', unsafe_allow_html=True)
 
-# File lưu trữ cơ sở dữ liệu tài khoản vĩnh viễn trên Server để F5 không bị mất
+# Khai báo các tệp lưu trữ dữ liệu vĩnh viễn trên Server
 DB_FILE = "users_database.json"
+HISTORY_FILE = "chat_history_database.json"
 
 def load_user_db():
     if os.path.exists(DB_FILE):
         try:
-            with open(DB_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+            with open(DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
         except: return {}
     return {}
 
 def save_user_db(db_data):
-    with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(db_data, f, ensure_ascii=False, indent=4)
+    with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db_data, f, ensure_ascii=False, indent=4)
+
+# Hàm đọc lịch sử chat từ file JSON lên
+def load_all_chat_histories():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f: return json.load(f)
+        except: return {}
+    return {}
+
+# Hàm ghi đồng bộ lịch sử chat xuống file JSON
+def save_all_chat_histories(history_data):
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f: json.dump(history_data, f, ensure_ascii=False, indent=4)
 
 user_db = load_user_db()
 
@@ -74,10 +85,8 @@ except:
     st.stop()
 
 if "ai_client" not in st.session_state:
-    try:
-        st.session_state.ai_client = genai.Client(api_key=API_KEY)
-    except Exception as e:
-        st.error(f"Lỗi khởi tạo bộ não AI: {e}")
+    try: st.session_state.ai_client = genai.Client(api_key=API_KEY)
+    except Exception as e: st.error(f"Lỗi khởi tạo bộ não AI: {e}")
 
 def get_embedding(text):
     try:
@@ -85,7 +94,7 @@ def get_embedding(text):
         return response.embeddings.values
     except: return None
 
-# --- KIỂM TRA PHIÊN ĐĂNG NHẬP QUA THAM SỐ URL (100% KHÔNG BỊ VĂNG KHI F5) ---
+# --- KIỂM TRA PHIÊN ĐĂNG NHẬP QUA THAM SỐ URL ---
 url_params = st.query_params
 logged_in_user = url_params.get("user", None)
 
@@ -114,12 +123,11 @@ if logged_in_user is None:
         if st.button("Xác Nhận Đăng Ký", use_container_width=True):
             if reg_user.strip() == "" or reg_pass.strip() == "":
                 st.warning("⚠️ Không được để trống tài khoản hoặc mật khẩu.")
-            elif reg_user in user_db:
-                st.error("❌ Tên đăng nhập này đã được sử dụng.")
+            elif reg_user in user_db: st.error("❌ Tên đăng nhập này đã được sử dụng.")
             else:
                 hashed_p = bcrypt.hashpw(reg_pass.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 user_db[reg_user] = hashed_p
-                save_user_db(user_db) # Ghi trực tiếp xuống file ổ cứng, F5 hoàn toàn không bị mất
+                save_user_db(user_db)
                 st.success("📝 Đăng ký thành công! Hãy quay lại tab Đăng Nhập.")
                 
     with tab3:
@@ -135,10 +143,20 @@ pages_key = f"chat_pages_{u_id}"
 active_page_key = f"active_page_{u_id}" 
 cache_key = f"cache_{u_id}"
 
+# 🟢 ĐỌC VÀ ĐỒNG BỘ DỮ LIỆU TỪ FILE JSON LÊN RAM KHI TẢI LẠI TRANG
+all_histories = load_all_chat_histories()
+
 if pages_key not in st.session_state:
-    st.session_state[pages_key] = {"Trang Chat 1": []} 
+    # Nếu trong file JSON ẩn đã có sẵn các phòng chat cũ của User này thì lấy ra dùng luôn
+    if u_id in all_histories:
+        st.session_state[pages_key] = all_histories[u_id]
+    else:
+        st.session_state[pages_key] = {"Trang Chat 1": []}
+        all_histories[u_id] = st.session_state[pages_key]
+        save_all_chat_histories(all_histories)
+
 if active_page_key not in st.session_state:
-    st.session_state[active_page_key] = "Trang Chat 1"
+    st.session_state[active_page_key] = list(st.session_state[pages_key].keys())[0]
 if cache_key not in st.session_state:
     st.session_state[cache_key] = []
 
@@ -166,22 +184,27 @@ def extract_web_content(url):
 
 with st.sidebar:
     st.markdown(f"### 👤 TÀI KHOẢN: **{u_id.upper()}**")
-    
-    # 🟢 SỬA LỖI ĐĂNG XUẤT KEYERROR: Xóa tham số URL an toàn không dùng thư viện ngoài
     if st.button("🚪 Đăng Xuất Hệ Thống", use_container_width=True, type="secondary"):
         st.query_params.clear()
         st.rerun()
-        
     st.markdown("---")
+    
     st.markdown("### 💬 QUẢN LÝ PHÒNG CHAT")
     if st.button("➕ Tạo trang chat mới", use_container_width=True, type="primary"):
         new_page_index = len(st.session_state[pages_key]) + 1
         new_page_name = f"Trang Chat {new_page_index}"
         st.session_state[pages_key][new_page_name] = []
+        
+        # Đồng bộ phòng chat mới tạo xuống file ổ cứng
+        all_histories[u_id] = st.session_state[pages_key]
+        save_all_chat_histories(all_histories)
+        
         st.session_state[active_page_key] = new_page_name
         st.rerun()
         
     page_options = list(st.session_state[pages_key].keys())
+    # Đề phòng trường hợp lỗi index khi đổi user
+    if current_page not in page_options: current_page = page_options[0]
     selected_page = st.selectbox("Chọn trang hội thoại đang xem:", page_options, index=page_options.index(current_page))
     if selected_page != current_page:
         st.session_state[active_page_key] = selected_page
@@ -193,15 +216,17 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📸 PHÂN TÍCH HÌNH ẢNH")
     uploaded_file = st.file_uploader("Tải ảnh lên tại đây...", type=["png", "jpg", "jpeg"])
-    if uploaded_file:
-        st.image(Image.open(uploaded_file), caption="Ảnh đã chọn", use_container_width=True)
+    if uploaded_file: st.image(Image.open(uploaded_file), caption="Ảnh đã chọn", use_container_width=True)
     st.markdown("---")
     st.markdown("### 📂 NHẬT KÝ TRANG HIỆN TẠI")
     if st.session_state[pages_key][current_page]:
         if st.button("🗑️ Xóa cuộc trò chuyện này", use_container_width=True):
             st.session_state[pages_key][current_page] = []
+            all_histories[u_id] = st.session_state[pages_key]
+            save_all_chat_histories(all_histories)
             st.rerun()
 
+# Hiển thị lại toàn bộ lịch sử hội thoại cũ lấy từ file database lên màn hình
 for message in st.session_state[pages_key][current_page]:
     avt_emoji = "👤" if message["role"] == "user" else "🐦‍🔥"
     with st.chat_message(message["role"], avatar=avt_emoji): st.markdown(message["content"])
@@ -235,6 +260,10 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
             st.markdown(cached_answer)
             st.caption(f"⚡ *Phản hồi ngay lập tức từ cache của {current_page}*")
             st.session_state[pages_key][current_page].append({"role": "assistant", "content": cached_answer})
+            
+            # Lưu đồng bộ câu trả lời từ Cache xuống file
+            all_histories[u_id] = st.session_state[pages_key]
+            save_all_chat_histories(all_histories)
     else:
         cau_hoi_clean = user_input.lower().strip()
         keywords = [
@@ -295,6 +324,10 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                     ai_response += source_text
                 
                 st.session_state[pages_key][current_page].append({"role": "assistant", "content": ai_response})
+                
+                # 🟢 ĐỒNG BỘ TIN NHẮN MỚI TẠO CỦA USER VÀ AI XUỐNG FILE JSON Ổ CỨNG VĨNH VIỄN
+                all_histories[u_id] = st.session_state[pages_key]
+                save_all_chat_histories(all_histories)
                 
                 if not uploaded_file:
                     new_embedding = get_embedding(user_input)
