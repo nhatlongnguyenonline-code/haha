@@ -381,17 +381,23 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                 try:
                     import urllib.parse
                     
-                    # Sử dụng Gemini 3.6 dịch mô tả tiếng Việt sang tiếng Anh để link URL không bị lỗi ký tự dài
-                    translation_prompt = f"Translate this image description into a concise, detailed English prompt for image generation. Return ONLY the English translation, no other text: {user_input}"
+                    # Sử dụng Gemini 3.6 dịch mô tả tiếng Việt sang tiếng Anh
+                    translation_prompt = (
+                        "Translate this image description into a concise, detailed English prompt for image generation. "
+                        f"Return ONLY the English translation, no other text, no quotes: {user_input}"
+                    )
                     translated_response = st.session_state.ai_client.models.generate_content(
                         model='gemini-3.6-flash',
                         contents=translation_prompt
                     )
                     english_prompt = translated_response.text.strip().replace("\n", " ").replace("\r", " ")
                     
-                    # Mã hóa an toàn phần nội dung (prompt) tách biệt hoàn toàn với tên miền
-                    encoded_prompt = urllib.parse.quote_plus(english_prompt)
-                    img_url = f"https://pollinations.ai{encoded_prompt}?width=1024&height=1024&nologo=true"
+                    # SỬA LỖI: Dùng quote thay vì quote_plus để khoảng trắng biến thành %20, không dùng dấu + gây lỗi hệ thống mạng
+                    encoded_prompt = urllib.parse.quote(english_prompt)
+                    
+                    # SỬA LỖI: Đảm bảo cấu trúc URL tách biệt hoàn toàn bằng dấu gạch chéo / chuẩn chỉnh
+                    base_url = "https://pollinations.ai"
+                    img_url = f"{base_url}{encoded_prompt}?width=1024&height=1024&nologo=true"
                     
                     img_response = requests.get(img_url, timeout=25)
                     if img_response.status_code == 200:
