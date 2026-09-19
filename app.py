@@ -14,15 +14,16 @@ from google import genai
 from google.genai import types  
 from PIL import Image  
 import streamlit as st
+from supabase import create_client, Client
 
 warnings.filterwarnings("ignore")
 
-#--- CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE SẠCH SẼ (ĐÃ XÓA GRADIENT HAI BÊN) ---
+#--- CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE SẠCH SẼ (XÓA GRADIENT HAI BÊN) ---
 st.set_page_config(page_title="Trợ Lý AI Toàn Năng", page_icon="🐦‍🔥", layout="centered")
 
 st.markdown("""
     <style>
-    /* ĐÃ XÓA THANH GRADIENT HAI BÊN KHỎI .stApp::before VÀ .stApp::after */
+    /* XÓA HOÀN TOÀN THANH GRADIENT HAI BÊN KHỎI .stApp::before VÀ .stApp::after */
     
     [data-testid="stSidebar"] { 
         background: linear-gradient(180deg, #F8FAFC 0%, #FFF7ED 100%) !important; 
@@ -72,7 +73,7 @@ st.markdown("""
         border-radius: 50% !important; 
     }
     
-    /* ĐÃ SỬA: Chỉ ẩn icon SVG mặc định của Streamlit, giữ lại chữ tiêu đề hiển thị rõ ràng */
+    /* SỬA LỖI: Chỉ ẩn icon SVG mặc định của Streamlit, khôi phục chữ tiêu đề rõ ràng */
     [data-testid="stHeaderHeading"] svg, [data-testid="stElementContainer"] h1 svg { 
         display: none !important; 
     }
@@ -92,9 +93,7 @@ st.markdown("""
         margin-top: 1.5rem; 
         margin-bottom: 4px; 
     }
-    .premium-logo { 
-        font-size: 2.5rem; 
-    }
+    .premium-logo { font-size: 2.5rem; }
     .premium-text { 
         font-size: 2.3rem; 
         font-weight: 800; 
@@ -119,35 +118,19 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-# Khai báo các tệp lưu trữ dữ liệu vĩnh viễn trên Server
-DB_FILE = "users_database.json"
-HISTORY_FILE = "chat_history_database.json"
+# Khởi tạo kết nối đám mây Supabase
+try:
+    SB_URL = st.secrets["SUPABASE_URL"]
+    SB_KEY = st.secrets["SUPABASE_KEY"]
+    supabase: Client = create_client(SB_URL, SB_KEY)
+except:
+    st.warning("⚠️ Hệ thống đang chờ cấu hình SUPABASE_URL và SUPABASE_KEY ngầm trong Secrets!")
+    st.stop()
 
-def load_user_db():
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
-        except: return {}
-    return {}
-
-def save_user_db(db_data):
-    with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db_data, f, ensure_ascii=False, indent=4)
-
-def load_all_chat_histories():
-    if os.path.exists(HISTORY_FILE):
-        try:
-            with open(HISTORY_FILE, "r", encoding="utf-8") as f: return json.load(f)
-        except: return {}
-    return {}
-
-def save_all_chat_histories(history_data):
-    with open(HISTORY_FILE, "w", encoding="utf-8") as f: json.dump(history_data, f, ensure_ascii=False, indent=4)
-
-user_db = load_user_db()
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
 except:
-    st.warning("⚠️ Hệ thống đang chờ cấu hình mã GEMINI_API_KEY ngầm trong mục Secrets!")
+    st.warning("⚠️ Hệ thống đang chờ cấu hình mã GEMINI_API_KEY ngầm trong Secrets!")
     st.stop()
 
 if "ai_client" not in st.session_state:
@@ -160,33 +143,30 @@ def get_embedding(text):
         return response.embeddings.values
     except: return None
 
-# Khởi tạo bộ lưu trữ Token bảo mật toàn cục của server
 if "global_token_registry" not in st.session_state:
-    st.session_state.global_token_registry = {} # Lưu cấu trúc: {"secure_token": "username"}
+    st.session_state.global_token_registry = {}
 
-# Đọc mã Token bảo mật trên thanh địa chỉ URL
 url_params = st.query_params
 current_url_token = url_params.get("token", None)
 
-# Xác định danh tính dựa trên Token và so khớp bộ nhớ phiên an toàn
 logged_in_user = None
 if current_url_token and current_url_token in st.session_state.global_token_registry:
     logged_in_user = st.session_state.global_token_registry[current_url_token]
 
-# Giao diện Khóa đăng nhập an toàn
+# Giao diện Đăng nhập / Đăng ký tương tác Supabase thời gian thực
 if logged_in_user is None:
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
     tab1, tab2 = st.tabs(["🔒 Đăng Nhập", "📝 Đăng Ký Tài Khoản"])
     
     with tab1:
         st.subheader("Đăng nhập hệ thống")
-        lin_user = st.text_input("Tên đăng nhập", key="lin_u")
+        lin_user = st.text_input("Tên đăng nhập", key="lin_u").strip()
         lin_pass = st.text_input("Mật khẩu", type="password", key="lin_p")
         if st.button("Đăng Nhập Khách", use_container_width=True, type="primary"):
-            if lin_user in user_db:
-                stored_val = user_db[lin_user]
-                stored_pass = stored_val["password"] if isinstance(stored_val, dict) else stored_val
-                if bcrypt.checkpw(lin_pass.encode('utf-8'), stored_pass.encode('utf-8')):
+            res = supabase.table("users").select("*").eq("username", lin_user).execute()
+            if res.data:
+                user_data = res.data[0]
+                if bcrypt.checkpw(lin_pass.encode('utf-8'), user_data["password"].encode('utf-8')):
                     secure_token = secrets.token_urlsafe(16)
                     st.session_state.global_token_registry[secure_token] = lin_user
                     st.query_params["token"] = secure_token
@@ -197,17 +177,20 @@ if logged_in_user is None:
             
     with tab2:
         st.subheader("Tạo tài khoản mới")
-        reg_user = st.text_input("Tên đăng nhập mới", key="reg_u")
+        reg_user = st.text_input("Tên đăng nhập mới", key="reg_u").strip()
         reg_pass = st.text_input("Mật khẩu mới", type="password", key="reg_p")
         if st.button("Xác Nhận Đăng Ký", use_container_width=True):
-            if reg_user.strip() == "" or reg_pass.strip() == "":
+            if reg_user == "" or reg_pass.strip() == "":
                 st.warning("⚠️ Không được để trống tài khoản hoặc mật khẩu.")
-            elif reg_user in user_db: st.error("❌ Tên đăng nhập này đã được sử dụng.")
             else:
-                hashed_p = bcrypt.hashpw(reg_pass.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                user_db[reg_user] = {"password": hashed_p, "display_name": reg_user}
-                save_user_db(user_db)
-                st.success("📝 Đăng ký thành công! Hãy quay lại tab Đăng Nhập.")
+                check_res = supabase.table("users").select("username").eq("username", reg_user).execute()
+                if check_res.data: st.error("❌ Tên đăng nhập này đã được sử dụng.")
+                else:
+                    hashed_p = bcrypt.hashpw(reg_pass.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    supabase.table("users").insert({
+                        "username": reg_user, "password": hashed_p, "display_name": reg_user
+                    }).execute()
+                    st.success("📝 Đăng ký thành công! Hãy quay lại tab Đăng Nhập.")
                 
     st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
@@ -216,25 +199,34 @@ pages_key = f"chat_pages_{u_id}"
 active_page_key = f"active_page_{u_id}" 
 cache_key = f"cache_{u_id}"
 
-all_histories = load_all_chat_histories()
+# Hàm tải toàn bộ danh sách phòng chat của user từ Supabase đám mây về
+def download_supabase_history(username):
+    pages = {}
+    res = supabase.table("chat_histories").select("*").eq("username", username).execute()
+    if res.data:
+        for row in res.data:
+            pages[row["page_name"]] = row["history_data"]
+    return pages
 
-# --- LOGIC TỰ ĐỘNG TẠO TRANG CHAT MỚI KHI RESTART/F5 TRANG ---
+# Hàm lưu/cập nhật 1 phòng chat cụ thể lên Supabase đám mây
+def upload_single_page_supabase(username, page_name, data_list):
+    supabase.table("chat_histories").upsert({
+        "username": username, "page_name": page_name, "history_data": data_list
+    }).execute()
+
+# --- LOGIC TỰ ĐỘNG TẢI/TẠO PHÒNG CHAT ĐỒNG BỘ VỚI ĐÁM MÂY ---
 if pages_key not in st.session_state:
-    if u_id in all_histories and all_histories[u_id]:
-        existing_pages = all_histories[u_id]
-        new_page_index = len(existing_pages) + 1
+    db_pages = download_supabase_history(u_id)
+    if db_pages:
+        new_page_index = len(db_pages) + 1
         new_page_name = f"Trang Chat {new_page_index}"
-        
-        existing_pages[new_page_name] = []
-        st.session_state[pages_key] = existing_pages
-        
-        all_histories[u_id] = existing_pages
-        save_all_chat_histories(all_histories)
+        db_pages[new_page_name] = []
+        st.session_state[pages_key] = db_pages
+        upload_single_page_supabase(u_id, new_page_name, [])
         st.session_state[active_page_key] = new_page_name
     else:
         st.session_state[pages_key] = {"Trang Chat 1": []}
-        all_histories[u_id] = st.session_state[pages_key]
-        save_all_chat_histories(all_histories)
+        upload_single_page_supabase(u_id, "Trang Chat 1", [])
         st.session_state[active_page_key] = "Trang Chat 1"
 
 if active_page_key not in st.session_state:
@@ -243,10 +235,9 @@ if cache_key not in st.session_state:
     st.session_state[cache_key] = []
 
 current_page = st.session_state[active_page_key]
-if u_id in user_db and isinstance(user_db[u_id], dict):
-    display_name = user_db[u_id].get("display_name", u_id)
-else:
-    display_name = u_id
+
+user_info_res = supabase.table("users").select("display_name").eq("username", u_id).execute()
+display_name = user_info_res.data[0]["display_name"] if user_info_res.data else u_id
 
 with st.sidebar:
     st.markdown(f"### 👤 TÀI KHOẢN: **{display_name.upper()}**")
@@ -259,17 +250,12 @@ with st.sidebar:
             st.session_state[f"rename_user_mode_{u_id}"] = True
             st.rerun()
     else:
-        new_name = st.text_input("Nhập tên hiển thị mới:", value=display_name)
+        new_name = st.text_input("Nhập tên hiển thị mới:", value=display_name).strip()
         col_u1, col_u2 = st.columns(2)
         with col_u1:
             if st.button("💾 Lưu tên", use_container_width=True, type="primary"):
-                if new_name.strip() != "":
-                    if u_id not in user_db or not isinstance(user_db[u_id], dict):
-                        old_pass = user_db[u_id] if u_id in user_db else ""
-                        user_db[u_id] = {"password": old_pass, "display_name": new_name.strip()}
-                    else:
-                        user_db[u_id]["display_name"] = new_name.strip()
-                    save_user_db(user_db)
+                if new_name != "":
+                    supabase.table("users").update({"display_name": new_name}).eq("username", u_id).execute()
                 st.session_state[f"rename_user_mode_{u_id}"] = False
                 st.rerun()
         with col_u2:
@@ -282,15 +268,14 @@ with st.sidebar:
             del st.session_state.global_token_registry[current_url_token]
         st.query_params.clear()
         st.rerun()
+        
     st.markdown("---")
-    
     st.markdown("### 💬 QUẢN LÝ PHÒNG CHAT")
     if st.button("➕ Tạo trang chat mới", use_container_width=True, type="primary"):
         new_page_index = len(st.session_state[pages_key]) + 1
         new_page_name = f"Trang Chat {new_page_index}"
         st.session_state[pages_key][new_page_name] = []
-        all_histories[u_id] = st.session_state[pages_key]
-        save_all_chat_histories(all_histories)
+        upload_single_page_supabase(u_id, new_page_name, [])
         st.session_state[active_page_key] = new_page_name
         st.rerun()
         
@@ -309,19 +294,16 @@ with st.sidebar:
             st.session_state[f"rename_mode_{u_id}"] = True
             st.rerun()
     else:
-        new_title = st.text_input("Nhập tên mới cho trang chat:", value=current_page)
+        new_title = st.text_input("Nhập tên mới:", value=current_page).strip()
         col_r1, col_r2 = st.columns(2)
         with col_r1:
             if st.button("✅ Lưu tên", use_container_width=True, type="primary"):
-                if new_title.strip() != "" and new_title != current_page:
-                    updated_pages = {}
-                    for k, v in st.session_state[pages_key].items():
-                        if k == current_page: updated_pages[new_title.strip()] = v
-                        else: updated_pages[k] = v
-                    st.session_state[pages_key] = updated_pages
-                    st.session_state[active_page_key] = new_title.strip()
-                    all_histories[u_id] = updated_pages
-                    save_all_chat_histories(all_histories)
+                if new_title != "" and new_title != current_page:
+                    supabase.table("chat_histories").delete().eq("username", u_id).eq("page_name", current_page).execute()
+                    upload_single_page_supabase(u_id, new_title, st.session_state[pages_key][current_page])
+                    
+                    st.session_state[pages_key][new_title] = st.session_state[pages_key].pop(current_page)
+                    st.session_state[active_page_key] = new_title
                 st.session_state[f"rename_mode_{u_id}"] = False
                 st.rerun()
         with col_r2:
@@ -343,15 +325,13 @@ with st.sidebar:
     with col1:
         if st.button("🗑 ... Dọn tin", use_container_width=True):
             st.session_state[pages_key][current_page] = []
-            all_histories[u_id] = st.session_state[pages_key]
-            save_all_chat_histories(all_histories)
+            upload_single_page_supabase(u_id, current_page, [])
             st.rerun()
     with col2:
         if len(page_options) > 1:
             if st.button("❌ Xóa trang", use_container_width=True):
+                supabase.table("chat_histories").delete().eq("username", u_id).eq("page_name", current_page).execute()
                 del st.session_state[pages_key][current_page]
-                all_histories[u_id] = st.session_state[pages_key]
-                save_all_chat_histories(all_histories)
                 st.session_state[active_page_key] = list(st.session_state[pages_key].keys())[-1]
                 st.rerun()
         else: st.caption("🔒 Giữ lại 1 trang.")
@@ -375,13 +355,13 @@ def extract_web_content(url):
     except: pass
     return ""
 
-# KHÔI PHỤC HIỂN THỊ TIÊU ĐỀ THƯƠNG HIỆU LỚN KHÔNG BỊ KHUẤT CHỮ TRÊN TRANG CHÍNH
+# HIỂN THỊ TIÊU ĐỀ THƯƠNG HIỆU LỚN KHÔNG BỊ KHUẤT CHỮ TRÊN TRANG CHÍNH CHUẨN ICON 🐦‍🔥
 st.markdown(f"""
     <div class="premium-title-container">
         <span class="premium-logo">🐦‍🔥</span>
         <span class="premium-text">TRỢ LÝ AI TOÀN NĂNG</span>
     </div>
-    <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6 và Công cụ tra cứu Internet Tự động</div>
+    <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6 và Đám mây Supabase an toàn 100%</div>
 """, unsafe_allow_html=True)
 
 # Hiển thị lịch sử hội thoại của trang đang chọn
@@ -416,10 +396,9 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
     if cache_hit:
         with st.chat_message("assistant", avatar="🐦‍🔥"):
             st.markdown(cached_answer)
-            st.caption(f"⚡ *Phản hồi ngay lập tức từ cache của {current_page}*")
+            st.caption(f"⚡ *Phản hồi từ cache của {current_page}*")
             st.session_state[pages_key][current_page].append({"role": "assistant", "content": cached_answer})
-            all_histories[u_id] = st.session_state[pages_key]
-            save_all_chat_histories(all_histories)
+            upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
     else:
         cau_hoi_clean = user_input.lower().strip()
         keywords = [
@@ -435,7 +414,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
         sources = []
         
         if need_web and not uploaded_file:
-            with st.status("🔍 Đang kết nối mạng và tra cứu thông tin thực tế rộng...", expanded=False) as status:
+            with st.status("🔍 Đang tra cứu thông tin thực tế rộng...", expanded=False) as status:
                 web_links = search_the_web_ddg(user_input)
                 if web_links:
                     for link in web_links:
@@ -447,10 +426,9 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
 
         if combined_context:
             prompt_payload = (
-                f"Bạn là Trợ lý AI Toàn năng. Dưới đây là thông tin cập nhật từ Internet để tham khảo (nếu có liên quan):\n"
+                f"Bạn là Trợ lý AI Toàn năng. Dưới đây là thông tin cập nhật từ Internet để tham khảo:\n"
                 f"{combined_context}\n\n"
-                f"Yêu cầu: Hãy trả lời câu hỏi sau của người dùng một cách chi tiết và mở rộng nhất. "
-                f"Nếu thông tin Internet trên chưa đủ hoặc không liên quan, hãy chủ động sử dụng toàn bộ kiến thức nội tại của bạn để giải thích đầy đủ cho người dùng.\n"
+                f"Yêu cầu: Trả lời chi tiết dựa trên thông tin này hoặc kiến thức nội tại.\n"
                 f"CÂU HỎI: {user_input}"
             )
         else: prompt_payload = user_input
@@ -480,8 +458,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                     ai_response += source_text
                 
                 st.session_state[pages_key][current_page].append({"role": "assistant", "content": ai_response})
-                all_histories[u_id] = st.session_state[pages_key]
-                save_all_chat_histories(all_histories)
+                upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
                 
                 if not uploaded_file:
                     new_embedding = get_embedding(user_input)
@@ -490,4 +467,4 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                             "embedding": new_embedding, "question": user_input, "answer": ai_response
                         })
             except Exception as e:
-                st.markdown(f"❌ Hệ thống bận: {e}. Bạn vui lòng thử gõ lại câu hỏi nhé!")
+                st.markdown(f"❌ Hệ thống bận: {e}. Bạn vui lòng thử lại nhé!")
