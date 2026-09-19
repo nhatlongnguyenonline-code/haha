@@ -1,4 +1,5 @@
 streamlit
+streamlit-authenticator
 google-genai
 duckduckgo_search
 beautifulsoup4
