@@ -13,7 +13,7 @@ from google import genai
 from google.genai import types  
 from PIL import Image  
 import streamlit as st
-from authlib.integrations.base_client import OAuthError
+import extra_streamlit_components as stx  # Thêm thư viện quản lý Cookie trình duyệt
 
 warnings.filterwarnings("ignore")
 
@@ -51,11 +51,13 @@ st.markdown("""
 st.markdown('<div class="premium-title-container"><span class="premium-logo">🐦‍🔥</span><span class="premium-text">TRỢ LÝ AI TOÀN NĂNG</span></div>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Hệ thống đọc hiểu kiến thức, phân tích hình ảnh và tra cứu Internet</p>', unsafe_allow_html=True)
 
-# Khởi tạo cơ sở dữ liệu tài khoản giả lập trong session_state để lưu tài khoản tự tạo công khai
+# Khởi tạo trình quản lý Cookie ngầm
+cookie_manager = stx.CookieManager()
+
 if "user_db" not in st.session_state:
-    st.session_state.user_db = {} # Cấu trúc: {"username": b"hashed_password"}
+    st.session_state.user_db = {}
 if "current_user" not in st.session_state:
-    st.session_state.current_user = None # Lưu thông tin người dùng đã đăng nhập
+    st.session_state.current_user = None
 
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
@@ -66,7 +68,6 @@ except:
 if "ai_client" not in st.session_state:
     try:
         st.session_state.ai_client = genai.Client(api_key=API_KEY)
-        st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
     except Exception as e:
         st.error(f"Lỗi khởi tạo bộ não AI: {e}")
 
@@ -76,7 +77,14 @@ def get_embedding(text):
         return response.embeddings.values
     except: return None
 
-# --- KHU VỰC GIAO DIỆN XÁC THỰC ĐĂNG NHẬP / ĐĂNG KÝ ---
+# --- LUỒNG TỰ ĐỘNG ĐĂNG NHẬP QUA COOKIE ---
+saved_user = cookie_manager.get(cookie="user_login_session")
+if saved_user and st.session_state.current_user is None:
+    try:
+        st.session_state.current_user = json.loads(saved_user)
+    except: pass
+
+# Giao diện Đăng nhập nếu chưa xác định danh tính
 if st.session_state.current_user is None:
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
     tab1, tab2, tab3 = st.tabs(["🔒 Đăng Nhập", "📝 Đăng Ký Tài Khoản", "🌐 Google Login"])
@@ -89,7 +97,10 @@ if st.session_state.current_user is None:
             if lin_user in st.session_state.user_db:
                 hashed = st.session_state.user_db[lin_user]
                 if bcrypt.checkpw(lin_pass.encode('utf-8'), hashed):
-                    st.session_state.current_user = {"id": lin_user, "name": lin_user, "type": "custom"}
+                    user_data = {"id": lin_user, "name": lin_user, "type": "custom"}
+                    st.session_state.current_user = user_data
+                    # Lưu cookie duy trì phiên trong 7 ngày (604800 giây)
+                    cookie_manager.set("user_login_session", json.dumps(user_data), max_age=604800)
                     st.success(f"🎉 Chào mừng {lin_user} quay trở lại!")
                     st.rerun()
                 else: st.error("❌ Sai mật khẩu, vui lòng kiểm tra lại.")
@@ -111,25 +122,28 @@ if st.session_state.current_user is None:
                 
     with tab3:
         st.subheader("Đăng nhập nhanh an toàn")
-        st.info("💡 Tính năng này sẽ kết nối trực tiếp đến cổng xác thực Google Account.")
-        # Nút bấm mô phỏng Google OAuth giả lập trên Streamlit Cloud nếu chưa cấu hình ClientID
         if st.button("🔴 Đăng nhập bằng Google", use_container_width=True):
-            # Tạo tài khoản giả lập Google khi bấm nút nhanh
-            st.session_state.current_user = {"id": "google_user_123", "name": "Người dùng Google", "type": "google"}
+            user_data = {"id": "google_user_123", "name": "Người dùng Google", "type": "google"}
+            st.session_state.current_user = user_data
+            cookie_manager.set("user_login_session", json.dumps(user_data), max_age=604800)
             st.success("🎉 Đăng nhập Google thành công!")
             st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
-    st.stop() # Dừng ứng dụng tại đây, bắt buộc đăng nhập mới hiện khung chat
-# Xác định khóa lưu trữ (Key) biệt lập theo ID cá nhân của từng tài khoản
+    st.stop()
 u_id = st.session_state.current_user["id"]
-msg_key = f"messages_{u_id}"
+pages_key = f"chat_pages_{u_id}"      # Lưu trữ danh sách các phòng chat của User này
+active_page_key = f"active_page_{u_id}" # Lưu trữ ID phòng chat hiện tại đang mở
 cache_key = f"cache_{u_id}"
 
-# Khởi tạo kho lưu trữ lịch sử chat và cache riêng cho cá nhân nếu chưa có
-if msg_key not in st.session_state:
-    st.session_state[msg_key] = []
+# ➕ KHỞI TẠO HỆ THỐNG ĐA TRANG CHAT CHO TỪNG TÀI KHOẢN
+if pages_key not in st.session_state:
+    st.session_state[pages_key] = {"Trang Chat 1": []} # Mặc định tạo sẵn Trang Chat 1 rỗng
+if active_page_key not in st.session_state:
+    st.session_state[active_page_key] = "Trang Chat 1"
 if cache_key not in st.session_state:
     st.session_state[cache_key] = []
+
+current_page = st.session_state[active_page_key]
 
 def search_the_web_ddg(query, max_results=3):
     urls = []
@@ -151,11 +165,31 @@ def extract_web_content(url):
     except: pass
     return ""
 
+# --- THANH SIDEBAR ĐA NĂNG NÂNG CẤP ---
 with st.sidebar:
     st.markdown(f"### 👤 TÀI KHOẢN: **{st.session_state.current_user['name'].upper()}**")
-    if st.button("🚪 Đăng Xuất", use_container_width=True, type="secondary"):
+    if st.button("🚪 Đăng Xuất & Xóa Cookie Session", use_container_width=True, type="secondary"):
+        cookie_manager.delete("user_login_session")  # Xóa sạch cookie để bắt đăng nhập lại lần sau
         st.session_state.current_user = None
         st.rerun()
+    st.markdown("---")
+    
+    # 🌟 NÚT TẠO TRANG CHAT MỚI (NEW CHAT BUTTON)
+    st.markdown("### 💬 QUẢN LÝ PHÒNG CHAT")
+    if st.button("➕ Tạo trang chat mới", use_container_width=True, type="primary"):
+        new_page_index = len(st.session_state[pages_key]) + 1
+        new_page_name = f"Trang Chat {new_page_index}"
+        st.session_state[pages_key][new_page_name] = []
+        st.session_state[active_page_key] = new_page_name
+        st.rerun()
+        
+    # DANH SÁCH LỰA CHỌN CÁC TRANG CHAT CŨ ĐỂ CHUYỂN ĐỔI
+    page_options = list(st.session_state[pages_key].keys())
+    selected_page = st.selectbox("Chọn trang hội thoại đang xem:", page_options, index=page_options.index(current_page))
+    if selected_page != current_page:
+        st.session_state[active_page_key] = selected_page
+        st.rerun()
+        
     st.markdown("---")
     st.markdown("### ⚙️ CÀI ĐẶT CHATBOT")
     creativity = st.slider("🧠 Độ nhạy bén / Sáng tạo", min_value=0.1, max_value=1.0, value=0.3, step=0.1)
@@ -164,26 +198,21 @@ with st.sidebar:
     uploaded_file = st.file_uploader("Tải ảnh lên tại đây...", type=["png", "jpg", "jpeg"])
     if uploaded_file:
         st.image(Image.open(uploaded_file), caption="Ảnh đã chọn", use_container_width=True)
-        st.info("💡 Hãy gõ câu hỏi vào ô chat để yêu cầu AI phân tích ảnh này.")
     st.markdown("---")
-    st.markdown("### 📂 NHẬT KÝ CÁ NHÂN")
-    if st.session_state[msg_key]:
-        chat_history_text = f"NHẬT KÝ HỘI THOẠI CỦA {st.session_state.current_user['name'].upper()}\n" + "="*50 + "\n"
-        for msg in st.session_state[msg_key]: chat_history_text += f"\n[ {msg['role'].upper()} ]: {msg['content']}\n"
-        st.download_button(label="📥 Tải lịch sử chat (.txt)", data=chat_history_text, file_name=f"AI_Chat_History_{u_id}.txt", mime="text/plain", use_container_width=True)
-        if st.button("🗑️ Xóa cuộc trò chuyện", use_container_width=True):
-            st.session_state[msg_key] = []
-            st.session_state.chat_session = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
+    st.markdown("### 📂 NHẬT KÝ TRANG HIỆN TẠI")
+    if st.session_state[pages_key][current_page]:
+        if st.button("🗑️ Xóa cuộc trò chuyện này", use_container_width=True):
+            st.session_state[pages_key][current_page] = []
             st.rerun()
 
-# Hiển thị lại toàn bộ lịch sử các tin nhắn cũ từ không gian riêng của User
-for message in st.session_state[msg_key]:
+# Hiển thị lại toàn bộ lịch sử các tin nhắn cũ của RIÊNG trang chat đang chọn
+for message in st.session_state[pages_key][current_page]:
     avt_emoji = "👤" if message["role"] == "user" else "🐦‍🔥"
     with st.chat_message(message["role"], avatar=avt_emoji): st.markdown(message["content"])
 
 # Nhận tin nhắn mới từ người dùng
 if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
-    st.session_state[msg_key].append({"role": "user", "content": user_input})
+    st.session_state[pages_key][current_page].append({"role": "user", "content": user_input})
     with st.chat_message("user", avatar="👤"): st.markdown(user_input)
 
     # --- ĐỘNG CƠ KIỂM TRA SEMANTIC CACHE CÁ NHÂN ---
@@ -195,17 +224,14 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
         if current_embedding is not None:
             best_score = -1
             best_match = None
-            
             for item in st.session_state[cache_key]:
                 dot_product = np.dot(current_embedding, item["embedding"])
                 norm_a = np.linalg.norm(current_embedding)
                 norm_b = np.linalg.norm(item["embedding"])
                 similarity = dot_product / (norm_a * norm_b)
-                
                 if similarity > best_score:
                     best_score = similarity
                     best_match = item
-            
             if best_score >= 0.85 and best_match is not None:
                 cache_hit = True
                 cached_answer = best_match["answer"]
@@ -213,8 +239,8 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
     if cache_hit:
         with st.chat_message("assistant", avatar="🐦‍🔥"):
             st.markdown(cached_answer)
-            st.caption("⚡ *Phản hồi ngay lập tức từ bộ nhớ đệm thông minh của bạn (Semantic Cache hit)*")
-            st.session_state[msg_key].append({"role": "assistant", "content": cached_answer})
+            st.caption(f"⚡ *Phản hồi ngay lập tức từ cache của {current_page}*")
+            st.session_state[pages_key][current_page].append({"role": "assistant", "content": cached_answer})
     else:
         cau_hoi_clean = user_input.lower().strip()
         keywords = [
@@ -252,6 +278,11 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
 
         with st.chat_message("assistant", avatar="🐦‍🔥"):
             try:
+                # Khởi tạo hoặc tái tạo chat session của riêng phòng chat hiện tại để AI nhớ đúng mạch của trang đó
+                chat_session_key = f"ai_session_{u_id}_{current_page}"
+                if chat_session_key not in st.session_state:
+                    st.session_state[chat_session_key] = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
+
                 def response_generator():
                     if uploaded_file:
                         response_stream = st.session_state.ai_client.models.generate_content_stream(
@@ -260,7 +291,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                             config=types.GenerateContentConfig(temperature=creativity)
                         )
                     else:
-                        response_stream = st.session_state.chat_session.send_message_stream(prompt_payload, config={"temperature": creativity})
+                        response_stream = st.session_state[chat_session_key].send_message_stream(prompt_payload, config={"temperature": creativity})
                     for chunk in response_stream: yield chunk.text
 
                 ai_response = st.write_stream(response_generator())
@@ -270,7 +301,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                     st.markdown(source_text)
                     ai_response += source_text
                 
-                st.session_state[msg_key].append({"role": "assistant", "content": ai_response})
+                st.session_state[pages_key][current_page].append({"role": "assistant", "content": ai_response})
                 
                 if not uploaded_file:
                     new_embedding = get_embedding(user_input)
