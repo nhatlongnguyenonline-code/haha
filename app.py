@@ -117,11 +117,11 @@ def get_embedding(text):
             model="text-embedding-004",
             contents=text
         )
-        return response.embeddings[0].values
+        return response.embeddings.values
     except:
         return None
 def search_the_web_ddg(query, max_results=3):
-    """Khôi phục: Tự động tra cứu tìm kiếm 3 nguồn web tham khảo phong丰富 như ban đầu."""
+    """Khôi phục: Tự động tra cứu tìm kiếm 3 nguồn web tham khảo phong phú như ban đầu."""
     urls = []
     try:
         with DDGS() as ddgs:
@@ -146,7 +146,7 @@ if "messages" not in st.session_state:
 
 # Khởi tạo kho lưu trữ Semantic Cache rỗng trong Session ngầm
 if "semantic_cache" not in st.session_state:
-    st.session_state.semantic_cache = []  # Định dạng cấu trúc: [{"embedding": [...], "question": "...", "answer": "..."}]
+    st.session_state.semantic_cache = []
 
 with st.sidebar:
     st.markdown("### ⚙️ CÀI ĐẶT CHATBOT")
@@ -181,20 +181,17 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
     with st.chat_message("user", avatar="👤"): 
         st.markdown(user_input)
 
-    # 🚀 --- ĐỘNG CƠ KIỂM TRA SEMANTIC CACHE (BỘ NHỚ ĐỆM NGỮ NGHĨA) ---
+    # --- ĐỘNG CƠ KIỂM TRA SEMANTIC CACHE ---
     cache_hit = False
     cached_answer = ""
     
-    # Chỉ kiểm tra Cache đối với câu hỏi Text thông thường (Không kiểm tra khi có tệp ảnh)
     if not uploaded_file:
         current_embedding = get_embedding(user_input)
         if current_embedding is not None:
             best_score = -1
             best_match = None
             
-            # Quét toàn bộ kho câu hỏi của những người dùng trước đó
             for item in st.session_state.semantic_cache:
-                # Thuật toán tính độ tương đồng Cosine Similarity giữa hai Vector
                 dot_product = np.dot(current_embedding, item["embedding"])
                 norm_a = np.linalg.norm(current_embedding)
                 norm_b = np.linalg.norm(item["embedding"])
@@ -204,24 +201,23 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                     best_score = similarity
                     best_match = item
             
-            # Ngưỡng tương đồng đặt là 0.85 (Tức là giống nhau > 85% về ý nghĩa mặt chữ)
             if best_score >= 0.85 and best_match is not None:
                 cache_hit = True
                 cached_answer = best_match["answer"]
 
-    # Nếu ĐÁP ỨNG TRÙNG NGỮ NGHĨA -> Trả kết quả ngay lập tức lập tức (0.01 giây)
+    # Nếu trùng ngữ nghĩa -> Trả kết quả ngay lập tức (0.01 giây)
     if cache_hit:
         with st.chat_message("assistant", avatar="🐦‍🔥"):
             st.markdown(cached_answer)
             st.caption("⚡ *Phản hồi ngay lập tức từ bộ nhớ đệm thông minh (Semantic Cache hit)*")
             st.session_state.messages.append({"role": "assistant", "content": cached_answer})
     
-    # Nếu CHƯA CÓ TRONG CACHE -> Chạy quy trình AI như bình thường
+    # Nếu chưa có trong cache -> Chạy luồng xử lý chính
     else:
         cau_hoi_clean = user_input.lower().strip()
         keywords = [
             "ở đâu", "thành phố", "giá", "thời tiết", "mấy độ", "bao nhiêu", "hôm nay", "tin tức", "ai là", "sự kiện", "trường thcs", "là gì", "dịch", "nghĩa là gì",
-            "mới nhất", "vừa qua", "hiện tại", "năm nay", "tuần này", "tháng này", "vừa mới", "gần đây", "ngày mai", "hôm quan",
+            "mới nhất", "vừa qua", "hiện tại", "năm nay", "tuần này", "tháng này", "vừa mới", "gần đây", "ngày mai", "hôm qua",
             "giá vàng", "xăng dầu", "cổ phiếu", "tỷ giá", "usd", "bitcoin", "crypto", "thị trường",
             "tỷ số", "trận đấu", "bóng đá", "ngoại hạng anh", "champions league", "kết quả", "lịch thi đấu", "drama", "scandal", "showbiz",
             "bản cập nhật", "vừa ra mắt", "ios", "android", "review", "đập hộp", "mở bán", "update", "thông số", "mô hình"
@@ -242,7 +238,17 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                             sources.append(link)
                     status.update(label=" Đọc dữ liệu thành công!", state="complete")
 
-        prompt_payload = f"[HỆ THỐNG]: Dựa trên dữ liệu thực tế Internet: {combined_context}\nCÂU HỎI NGƯỜI DÙNG: {user_input}" if combined_context else user_input
+        # 🟢 --- CẬP NHẬT PROMPT PAYLOAD MỀM DẺO MỚI (TỐI ƯU TẬN GỐC TƯ DUY AI) ---
+        if combined_context:
+            prompt_payload = (
+                f"Bạn là Trợ lý AI Toàn năng. Dưới đây là thông tin cập nhật từ Internet để tham khảo (nếu có liên quan):\n"
+                f"{combined_context}\n\n"
+                f"Yêu cầu: Hãy trả lời câu hỏi sau của người dùng một cách chi tiết và mở rộng nhất. "
+                f"Nếu thông tin Internet trên chưa đủ hoặc không liên quan, hãy chủ động sử dụng toàn bộ kiến thức nội tại của bạn để giải thích đầy đủ cho người dùng.\n"
+                f"CÂU HỎI: {user_input}"
+            )
+        else:
+            prompt_payload = user_input
 
         with st.chat_message("assistant", avatar="🐦‍🔥"):
             try:
@@ -270,7 +276,7 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                 
                 st.session_state.messages.append({"role": "assistant", "content": ai_response})
                 
-                # Sau khi AI trả lời xong một câu mới thành công, tự động tính vector lưu vào Cache phục vụ người sau
+                # Lưu vào bộ đệm cache câu trả lời chất lượng vừa tạo
                 if not uploaded_file:
                     new_embedding = get_embedding(user_input)
                     if new_embedding is not None:
