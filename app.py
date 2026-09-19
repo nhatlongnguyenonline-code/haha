@@ -168,26 +168,6 @@ if cache_key not in st.session_state:
     st.session_state[cache_key] = []
 
 current_page = st.session_state[active_page_key]
-def search_the_web_ddg(query, max_results=3):
-    urls = []
-    try:
-        with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=max_results))
-            for r in results: urls.append(r['href'])
-    except: pass
-    return urls
-
-def extract_web_content(url):
-    try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        response = requests.get(url, headers=headers, timeout=4)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.content, 'html.parser')
-            for element in soup(["script", "style", "nav", "footer", "header", "aside", "form"]): element.decompose()
-            return ' '.join(soup.get_text().split())[:1500]
-    except: pass
-    return ""
-
 with st.sidebar:
     st.markdown(f"### 👤 TÀI KHOẢN: **{u_id.upper()}**")
     if st.button("🚪 Đăng Xuất Hệ Thống", use_container_width=True, type="secondary"):
@@ -212,6 +192,38 @@ with st.sidebar:
         st.session_state[active_page_key] = selected_page
         st.rerun()
         
+    # --- TÍNH NĂNG ĐỔI TÊN PHÒNG CHAT CHỦ ĐỘNG ---
+    if f"rename_mode_{u_id}" not in st.session_state:
+        st.session_state[f"rename_mode_{u_id}"] = False
+        
+    if not st.session_state[f"rename_mode_{u_id}"]:
+        if st.button("✏️ Đổi tên trang này", use_container_width=True):
+            st.session_state[f"rename_mode_{u_id}"] = True
+            st.rerun()
+    else:
+        new_title = st.text_input("Nhập tên mới cho trang chat:", value=current_page)
+        col_r1, col_r2 = st.columns(2)
+        with col_r1:
+            if st.button("✅ Lưu tên", use_container_width=True, type="primary"):
+                if new_title.strip() != "" and new_title != current_page:
+                    updated_pages = {}
+                    for k, v in st.session_state[pages_key].items():
+                        if k == current_page: updated_pages[new_title.strip()] = v
+                        else: updated_pages[k] = v
+                    
+                    st.session_state[pages_key] = updated_pages
+                    st.session_state[active_page_key] = new_title.strip()
+                    
+                    all_histories[u_id] = updated_pages
+                    save_all_chat_histories(all_histories)
+                    
+                st.session_state[f"rename_mode_{u_id}"] = False
+                st.rerun()
+        with col_r2:
+            if st.button("❌ Hủy", use_container_width=True):
+                st.session_state[f"rename_mode_{u_id}"] = False
+                st.rerun()
+        
     st.markdown("---")
     st.markdown("### ⚙️ CÀI ĐẶT CHATBOT")
     creativity = st.slider("🧠 Độ nhạy bén / Sáng tạo", min_value=0.1, max_value=1.0, value=0.3, step=0.1)
@@ -221,28 +233,44 @@ with st.sidebar:
     if uploaded_file: st.image(Image.open(uploaded_file), caption="Ảnh đã chọn", use_container_width=True)
     st.markdown("---")
     
-    # ⚡ KHU VỰC ĐÃ CẬP NHẬT HAI NÚT XÓA SONG SONG NẰM CÙNG MỘT DÒNG
+    # --- BỘ ĐÔI NÚT XÓA SONG SONG NẰM CÙNG MỘT DÒNG ---
     st.markdown("### 📂 NHẬT KÝ TRANG HIỆN TẠI")
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("🗑️ Dọn tin nhắn", use_container_width=True, help="Xóa sạch nội dung chat của trang hiện tại"):
+        if st.button("🗑 ... Dọn tin", use_container_width=True):
             st.session_state[pages_key][current_page] = []
             all_histories[u_id] = st.session_state[pages_key]
             save_all_chat_histories(all_histories)
             st.rerun()
     with col2:
-        # Chỉ hiển thị nút xóa hẳn trang nếu người dùng đang có từ 2 trang chat trở lên
         if len(page_options) > 1:
-            if st.button("❌ Xóa hẳn trang", use_container_width=True, help="Xóa sổ hoàn toàn trang chat này"):
-                # Xóa tên trang ra khỏi từ điển dữ liệu
+            if st.button("❌ Xóa trang", use_container_width=True):
                 del st.session_state[pages_key][current_page]
                 all_histories[u_id] = st.session_state[pages_key]
                 save_all_chat_histories(all_histories)
-                # Chỉ định trang chat còn lại kế bên làm trang active mới
                 st.session_state[active_page_key] = list(st.session_state[pages_key].keys())[-1]
                 st.rerun()
         else:
-            st.caption("🔒 Yêu cầu giữ lại ít nhất 1 trang chat mặc định.")
+            st.caption("🔒 Giữ lại 1 trang.")
+def search_the_web_ddg(query, max_results=3):
+    urls = []
+    try:
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=max_results))
+            for r in results: urls.append(r['href'])
+    except: pass
+    return urls
+
+def extract_web_content(url):
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        response = requests.get(url, headers=headers, timeout=4)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            for element in soup(["script", "style", "nav", "footer", "header", "aside", "form"]): element.decompose()
+            return ' '.join(soup.get_text().split())[:1500]
+    except: pass
+    return ""
 
 # Hiển thị lịch sử hội thoại của trang đang chọn
 for message in st.session_state[pages_key][current_page]:
