@@ -25,15 +25,14 @@ warnings.filterwarnings("ignore")
 # CẤU HÌNH TRANG STREAMLIT
 # ============================================================
 st.set_page_config(
-    page_title="Trợ Lý AI & Cộng Đồng",
-    page_icon="🐦‍🔥",
+    page_title="Trợ Lý AI & Zalo Style Chat",
+    page_icon="💬",
     layout="wide",
 )
 
 AI_MODEL = st.secrets.get("GEMINI_MODEL", "gemini-3.6-flash")
 EMBEDDING_MODEL = st.secrets.get("EMBEDDING_MODEL", "gemini-embedding-001")
 CACHE_THRESHOLD = float(st.secrets.get("CACHE_THRESHOLD", 0.85))
-SESSION_DAYS = int(st.secrets.get("SESSION_DAYS", 30))
 MAX_WEB_RESULTS = int(st.secrets.get("MAX_WEB_RESULTS", 3))
 MAX_PAGE_TEXT = int(st.secrets.get("MAX_PAGE_TEXT", 2500))
 
@@ -41,76 +40,57 @@ DEFAULT_AVATAR = "https://www.w3schools.com/howto/img_avatar.png"
 AI_AVATAR_EMOJI = "🐦‍🔥"
 
 # ============================================================
-# GIAO DIỆN & NÂNG CẤP ĐỒ HỌA (ADVANCED UI/UX)
+# GIAO DIỆN & NÂNG CẤP ĐỒ HỌA (ZALO STYLE)
 # ============================================================
 st.markdown(
     """
     <style>
     .main {
-        background-color: #FAFAFA !important;
+        background-color: #F0F2F5 !important;
     }
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%) !important;
+        background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
         border-right: 1px solid #E2E8F0 !important;
-        box-shadow: 4px 0 15px rgba(0, 0, 0, 0.02) !important;
     }
     [data-testid="stChatMessage"] {
-        border-radius: 20px !important;
-        margin-bottom: 18px !important;
-        padding: 18px 22px !important;
-        transition: all 0.2s ease-in-out !important;
-    }
-    [data-testid="stChatMessageAssistant"] {
-        background: #FFFFFF !important;
-        border: 1px solid #E2E8F0 !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
-    }
-    [data-testid="stChatMessageUser"] {
-        background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%) !important;
-        border: 1px solid #BFDBFE !important;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.05) !important;
+        border-radius: 16px !important;
+        margin-bottom: 14px !important;
+        padding: 14px 18px !important;
     }
     .premium-title-container {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 14px;
-        margin-top: 0.5rem;
-        margin-bottom: 4px;
+        gap: 12px;
+        margin-top: 0.2rem;
+        margin-bottom: 2px;
     }
     .premium-logo { 
-        font-size: 2.5rem;
-        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+        font-size: 2.2rem;
     }
     .premium-text {
-        font-size: 2.2rem;
-        font-weight: 900;
-        letter-spacing: -0.5px;
-        background: linear-gradient(90deg, #EF4444 0%, #F59E0B 100%);
+        font-size: 2rem;
+        font-weight: 800;
+        background: linear-gradient(90deg, #0068FF 0%, #0099FF 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
     .sub-title {
         text-align: center;
         color: #64748B !important;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         font-weight: 500;
-        margin-bottom: 1.2rem;
+        margin-bottom: 1rem;
     }
     .stButton button {
-        border-radius: 12px !important;
+        border-radius: 10px !important;
         font-weight: 600 !important;
-        transition: all 0.2s ease !important;
-    }
-    .stButton button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
     }
     .login-box {
-        max-width: 500px;
+        max-width: 480px;
         margin: 40px auto;
-        padding: 28px;
-        border-radius: 20px;
+        padding: 26px;
+        border-radius: 18px;
         background: #FFFFFF;
         border: 1px solid #E2E8F0;
         box-shadow: 0 10px 25px rgba(0,0,0,0.05);
@@ -118,18 +98,18 @@ st.markdown(
     .social-card {
         background: #FFFFFF;
         border: 1px solid #E2E8F0;
-        border-radius: 16px;
-        padding: 14px 18px;
-        margin-bottom: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         display: flex;
         gap: 12px;
-        align-items: flex-start;
+        align-items: center;
     }
     .social-user {
         font-weight: 700;
-        color: #2563EB;
-        font-size: 0.9rem;
+        color: #0068FF;
+        font-size: 0.95rem;
     }
     .social-time {
         font-size: 0.75rem;
@@ -137,27 +117,25 @@ st.markdown(
         margin-left: auto;
     }
     .user-avatar-img {
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
         object-fit: cover !important;
-        object-position: center !important;
-        border: 2px solid #3B82F6;
+        border: 2px solid #0068FF;
         flex-shrink: 0;
     }
     .profile-card {
         text-align: center;
-        padding: 10px 0;
+        padding: 8px 0;
     }
     .profile-avatar {
-        width: 90px;
-        height: 90px;
+        width: 80px;
+        height: 80px;
         border-radius: 50%;
         object-fit: cover !important;
-        object-position: center !important;
-        border: 3px solid #3B82F6;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        margin: 0 auto 10px auto;
+        border: 3px solid #0068FF;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        margin: 0 auto 8px auto;
         display: block;
     }
     </style>
@@ -261,9 +239,9 @@ if url_token:
 
 if logged_in_user is None:
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["🔒 Đăng Nhập", "📝 Đăng Ký Tài Khoản"])
+    tab_l1, tab_l2 = st.tabs(["🔒 Đăng Nhập", "📝 Đăng Ký Tài Khoản"])
 
-    with tab1:
+    with tab_l1:
         st.subheader("Đăng nhập hệ thống")
         lin_user = st.text_input("Tên đăng nhập", key="lin_u").strip()
         lin_pass = st.text_input("Mật khẩu", type="password", key="lin_p")
@@ -303,7 +281,7 @@ if logged_in_user is None:
                 except Exception as exc:
                     st.error(f"❌ Lỗi đăng nhập: {safe_error_message(exc)}")
 
-    with tab2:
+    with tab_l2:
         st.subheader("Tạo tài khoản mới")
         reg_user = st.text_input("Tên đăng nhập mới", key="reg_u").strip()
         reg_pass = st.text_input("Mật khẩu mới", type="password", key="reg_p")
@@ -685,10 +663,10 @@ def extract_web_content(url):
 st.markdown(
     """
     <div class="premium-title-container">
-        <span class="premium-logo">🐦‍🔥</span>
-        <span class="premium-text">TRỢ LÝ AI & CỘNG ĐỒNG</span>
+        <span class="premium-logo">💬</span>
+        <span class="premium-text">TRỢ LÝ AI & KẾT NỐI ZALO</span>
     </div>
-    <div class="sub-title">Tích hợp AI Chatbot, Phòng Chat Chung & Tin Nhắn Riêng 1-1</div>
+    <div class="sub-title">Chat AI Thông Minh, Phòng Chat Cộng Đồng & Kết Bạn Nhắn Tin Riêng Tư</div>
     """,
     unsafe_allow_html=True,
 )
@@ -699,7 +677,7 @@ st.markdown(
 tab_ai, tab_public, tab_dm = st.tabs([
     "🤖 Chat Với AI", 
     "💬 Chat Cộng Đồng",
-    "🔒 Tin Nhắn Riêng Tư (Messenger Style)"
+    "🔒 Tin Nhắn Riêng Tư (Zalo Style)"
 ])
 
 # ------------------------------------------------------------
@@ -920,7 +898,7 @@ with tab_public:
                 msg_user = item.get("username")
                 time_str = item.get("created_at", "")[:16].replace("T", " ")
                 item_avatar = item.get("avatar_url") or DEFAULT_AVATAR
-                msg_text = item.get("message")
+                    msg_text = item.get("message")
 
                 col_msg, col_action = st.columns([6, 1])
                 with col_msg:
@@ -954,7 +932,7 @@ with tab_public:
         st.error(f"❌ Lỗi tải tin nhắn cộng đồng: {safe_error_message(exc)}")
 
 # ------------------------------------------------------------
-# TAB 3: TIN NHẮN RIÊNG 1-1 (MESSENGER / ZALO STYLE)
+# TAB 3: TIN NHẮN RIÊNG 1-1 (ZALO STYLE & KẾT BẠN)
 # ------------------------------------------------------------
 with tab_dm:
     try:
@@ -964,107 +942,230 @@ with tab_dm:
     except Exception:
         other_users = []
 
-    if not other_users:
-        st.info("Chưa có thành viên nào khác trong hệ thống để nhắn tin.")
-    else:
-        st.markdown("### 💬 Chọn người cần nhắn tin riêng")
-        
-        user_options = { (u.get("display_name") or u["username"]): u["username"] for u in other_users }
-        selected_dname = st.selectbox("Chọn thành viên:", list(user_options.keys()), key="select_dm_user_box")
-        selected_receiver = user_options[selected_dname]
+    # Lấy danh sách bạn bè và lời mời từ bảng friendships
+    try:
+        friend_res = supabase.table("friendships").select("*").or_(f"sender.eq.{u_id},receiver.eq.{u_id}").execute()
+        friendships_data = friend_res.data or []
+    except Exception:
+        friendships_data = []
+
+    # Phân loại mối quan hệ
+    friend_list = []
+    pending_requests = [] # Lời mời người khác gửi cho mình (cần duyệt)
+    sent_requests = []    # Lời mời mình đã gửi đi
+
+    for f in friendships_data:
+        s = f.get("sender")
+        r = f.get("receiver")
+        status = f.get("status")
+
+        if status == "accepted":
+            if s == u_id:
+                friend_list.append(r)
+            else:
+                friend_list.append(s)
+        elif status == "pending":
+            if r == u_id:
+                pending_requests.append((f.get("id"), s))
+            elif s == u_id:
+                sent_requests.append(r)
+
+    # Giao diện Zalo Style: Chia thành 2 tab nhỏ (Trò chuyện & Danh bạ / Lời mời kết bạn)
+    sub_tab_chat, sub_tab_contacts = st.tabs(["💬 Trò Chuyện", "👥 Danh Bạ & Kết Bạn"])
+
+    with sub_tab_contacts:
+        st.markdown("#### 📥 Lời mời kết bạn chờ duyệt")
+        if not pending_requests:
+            st.caption("Không có lời mời kết bạn nào đang chờ.")
+        else:
+            for req_id, sender_username in pending_requests:
+                sender_info = next((u for u in other_users if u["username"] == sender_username), {"display_name": sender_username, "avatar_url": DEFAULT_AVATAR})
+                s_name = sender_info.get("display_name") or sender_username
+                s_ava = sender_info.get("avatar_url") or DEFAULT_AVATAR
+
+                c1, c2, c3 = st.columns([3, 1, 1])
+                with c1:
+                    st.markdown(
+                        f"""
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <img src="{s_ava}" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover;" />
+                            <b>{s_name}</b> muốn kết bạn với bạn.
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                with c2:
+                    if st.button("Đồng ý", key=f"accept_{req_id}", type="primary", use_container_width=True):
+                        try:
+                            supabase.table("friendships").update({"status": "accepted"}).eq("id", req_id).execute()
+                            st.success("✅ Đã chấp nhận kết bạn!")
+                            st.rerun()
+                        except Exception as exc:
+                            st.error(f"Lỗi: {safe_error_message(exc)}")
+                with c3:
+                    if st.button("Từ chối", key=f"reject_{req_id}", use_container_width=True):
+                        try:
+                            supabase.table("friendships").delete().eq("id", req_id).execute()
+                            st.info("Đã từ chối lời mời.")
+                            st.rerun()
+                        except Exception as exc:
+                            st.error(f"Lỗi: {safe_error_message(exc)}")
 
         st.markdown("---")
+        st.markdown("#### 🔍 Tìm kiếm người dùng & Kết bạn")
+        search_query = st.text_input("Nhập tên đăng nhập hoặc tên hiển thị để tìm kiếm:", key="search_user_input").strip()
 
-        receiver_info = next((u for u in other_users if u["username"] == selected_receiver), {"display_name": selected_receiver, "avatar_url": DEFAULT_AVATAR})
-        rec_dname = receiver_info.get("display_name") or selected_receiver
-        rec_ava = receiver_info.get("avatar_url") or DEFAULT_AVATAR
+        if search_query:
+            matched_users = [
+                u for u in other_users 
+                if search_query.lower() in u["username"].lower() or search_query.lower() in u.get("display_name", "").lower()
+            ]
+            if not matched_users:
+                st.info("Không tìm thấy người dùng phù hợp.")
+            else:
+                for mu in matched_users:
+                    mu_username = mu["username"]
+                    mu_dname = mu.get("display_name") or mu_username
+                    mu_ava = mu.get("avatar_url") or DEFAULT_AVATAR
 
-        st.markdown(
-            f"""
-            <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
-                <img src="{rec_ava}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #3B82F6;" />
-                <div>
-                    <div style="font-weight: 700; color: #0F172A; font-size: 1.05rem;">{rec_dname}</div>
-                    <div style="font-size: 0.8rem; color: #10B981;">● Đang hoạt động</div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+                    is_friend = mu_username in friend_list
+                    is_sent_pending = mu_username in sent_requests
 
-        st_autorefresh(interval=3000, key="messenger_dm_refresh")
-
-        chat_container = st.container(height=420)
-        with chat_container:
-            try:
-                res_dm = (
-                    supabase.table("private_messages")
-                    .select("*")
-                    .or_(f"sender.eq.{u_id},receiver.eq.{u_id}")
-                    .order("created_at", desc=False)
-                    .execute()
-                )
-                raw_dm_list = res_dm.data or []
-                
-                dm_list = [
-                    m for m in raw_dm_list 
-                    if (m.get("sender") == u_id and m.get("receiver") == selected_receiver) or 
-                       (m.get("sender") == selected_receiver and m.get("receiver") == u_id)
-                ]
-
-                if not dm_list:
-                    st.info(f"Chưa có tin nhắn nào với {rec_dname}. Hãy gửi lời chào đầu tiên!")
-                else:
-                    for msg in dm_list:
-                        m_sender = msg.get("sender")
-                        m_text = msg.get("message")
-                        m_time = msg.get("created_at", "")[11:16]
-                        m_avatar = msg.get("avatar_url") or DEFAULT_AVATAR
-
-                        is_me = (m_sender == u_id)
-                        flex_dir = "row-reverse" if is_me else "row"
-                        bg_bubble = "#0084FF" if is_me else "#E4E6EB"
-                        text_color = "#FFFFFF" if is_me else "#050505"
-                        align_text = "right" if is_me else "left"
-
+                    c_u1, c_u2 = st.columns([4, 2])
+                    with c_u1:
                         st.markdown(
                             f"""
-                            <div style="display: flex; flex-direction: {flex_dir}; gap: 8px; margin-bottom: 10px; align-items: flex-end;">
-                                <img src="{m_avatar}" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;" />
-                                <div style="max-width: 65%;">
-                                    <div style="background: {bg_bubble}; color: {text_color}; padding: 10px 14px; border-radius: 18px; font-size: 0.95rem; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                                        {m_text}
-                                    </div>
-                                    <div style="font-size: 0.7rem; color: #94A3B8; margin-top: 2px; text-align: {align_text};">{m_time}</div>
+                            <div style="display: flex; align-items: center; gap: 10px; padding: 6px 0;">
+                                <img src="{mu_ava}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
+                                <div>
+                                    <div style="font-weight: 700;">{mu_dname}</div>
+                                    <div style="font-size: 0.8rem; color: #64748B;">@{mu_username}</div>
                                 </div>
                             </div>
                             """,
                             unsafe_allow_html=True,
                         )
-            except Exception as exc:
-                st.error(f"❌ Lỗi tải tin nhắn: {safe_error_message(exc)}")
+                    with c_u2:
+                        st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+                        if is_friend:
+                            st.markdown("✅ **Đã là bạn bè**")
+                        elif is_sent_pending:
+                            st.markdown("⏳ **Đã gửi lời mời**")
+                        else:
+                            if st.button("➕ Kết bạn", key=f"add_friend_{mu_username}", type="primary"):
+                                try:
+                                    supabase.table("friendships").insert({
+                                        "sender": u_id,
+                                        "receiver": mu_username,
+                                        "status": "pending"
+                                    }).execute()
+                                    st.success("Đã gửi lời mời kết bạn!")
+                                    st.rerun()
+                                except Exception as exc:
+                                    st.error(f"Lỗi: {safe_error_message(exc)}")
 
-        # Sử dụng text_input thông thường thay vì form để tránh xung đột state khi auto-refresh
-        col_input, col_send = st.columns([5, 1])
-        with col_input:
-            dm_input = st.text_input(
-                "Nhập tin nhắn...", 
-                placeholder=f"Nhắn gì đó cho {rec_dname}...", 
-                label_visibility="collapsed", 
-                key=f"dm_input_text_{selected_receiver}"
+    with sub_tab_chat:
+        if not friend_list:
+            st.info("📭 Danh sách bạn bè trống. Hãy sang tab **'Danh Bạ & Kết Bạn'** để tìm và kết bạn với người khác trước khi nhắn tin!")
+        else:
+            friend_options = {
+                (next((u.get("display_name") or u["username"] for u in other_users if u["username"] == f), f)): f 
+                for f in friend_list
+            }
+            selected_dname = st.selectbox("Chọn bạn bè để trò chuyện:", list(friend_options.keys()), key="select_friend_chat")
+            selected_receiver = friend_options[selected_dname]
+
+            st.markdown("---")
+
+            receiver_info = next((u for u in other_users if u["username"] == selected_receiver), {"display_name": selected_receiver, "avatar_url": DEFAULT_AVATAR})
+            rec_dname = receiver_info.get("display_name") or selected_receiver
+            rec_ava = receiver_info.get("avatar_url") or DEFAULT_AVATAR
+
+            st.markdown(
+                f"""
+                <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                    <img src="{rec_ava}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #0068FF;" />
+                    <div>
+                        <div style="font-weight: 700; color: #0F172A; font-size: 1.05rem;">{rec_dname}</div>
+                        <div style="font-size: 0.8rem; color: #10B981;">● Bạn bè</div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
-        with col_send:
-            st.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
-            dm_send_btn = st.button("Gửi ➔", use_container_width=True, type="primary", key=f"dm_send_btn_{selected_receiver}")
 
-        if dm_send_btn and dm_input and dm_input.strip():
-            try:
-                supabase.table("private_messages").insert({
-                    "sender": u_id,
-                    "receiver": selected_receiver,
-                    "message": dm_input.strip(),
-                    "avatar_url": avatar_url,
-                }).execute()
-                st.rerun()
-            except Exception as exc:
-                st.error(f"❌ Không gửi được: {safe_error_message(exc)}")
+            st_autorefresh(interval=3000, key="zalo_dm_refresh")
+
+            chat_container = st.container(height=400)
+            with chat_container:
+                try:
+                    res_dm = (
+                        supabase.table("private_messages")
+                        .select("*")
+                        .or_(f"sender.eq.{u_id},receiver.eq.{u_id}")
+                        .order("created_at", desc=False)
+                        .execute()
+                    )
+                    raw_dm_list = res_dm.data or []
+                    
+                    dm_list = [
+                        m for m in raw_dm_list 
+                        if (m.get("sender") == u_id and m.get("receiver") == selected_receiver) or 
+                           (m.get("sender") == selected_receiver and m.get("receiver") == u_id)
+                    ]
+
+                    if not dm_list:
+                    st.info(f"Chưa có tin nhắn nào với {rec_dname}. Hãy gửi lời chào đầu tiên!")
+                    else:
+                        for msg in dm_list:
+                            m_sender = msg.get("sender")
+                            m_text = msg.get("message")
+                            m_time = msg.get("created_at", "")[11:16]
+                            m_avatar = msg.get("avatar_url") or DEFAULT_AVATAR
+
+                            is_me = (m_sender == u_id)
+                            flex_dir = "row-reverse" if is_me else "row"
+                            bg_bubble = "#0068FF" if is_me else "#E4E6EB"
+                            text_color = "#FFFFFF" if is_me else "#050505"
+                            align_text = "right" if is_me else "left"
+
+                            st.markdown(
+                                f"""
+                                <div style="display: flex; flex-direction: {flex_dir}; gap: 8px; margin-bottom: 10px; align-items: flex-end;">
+                                    <img src="{m_avatar}" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;" />
+                                    <div style="max-width: 65%;">
+                                        <div style="background: {bg_bubble}; color: {text_color}; padding: 10px 14px; border-radius: 18px; font-size: 0.95rem; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                                            {m_text}
+                                        </div>
+                                        <div style="font-size: 0.7rem; color: #94A3B8; margin-top: 2px; text-align: {align_text};">{m_time}</div>
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+                except Exception as exc:
+                    st.error(f"❌ Lỗi tải tin nhắn: {safe_error_message(exc)}")
+
+            col_input, col_send = st.columns([5, 1])
+            with col_input:
+                dm_input = st.text_input(
+                    "Nhập tin nhắn...", 
+                    placeholder=f"Nhắn gì đó cho {rec_dname}...", 
+                    label_visibility="collapsed", 
+                    key=f"dm_input_text_{selected_receiver}"
+                )
+            with col_send:
+                st.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
+                dm_send_btn = st.button("Gửi ➔", use_container_width=True, type="primary", key=f"dm_send_btn_{selected_receiver}")
+
+            if dm_send_btn and dm_input and dm_input.strip():
+                try:
+                    supabase.table("private_messages").insert({
+                        "sender": u_id,
+                        "receiver": selected_receiver,
+                        "message": dm_input.strip(),
+                        "avatar_url": avatar_url,
+                    }).execute()
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f"❌ Không gửi được: {safe_error_message(exc)}")
