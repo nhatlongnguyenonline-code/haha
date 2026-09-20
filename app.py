@@ -38,6 +38,8 @@ MAX_WEB_RESULTS = int(st.secrets.get("MAX_WEB_RESULTS", 3))
 MAX_PAGE_TEXT = int(st.secrets.get("MAX_PAGE_TEXT", 2500))
 
 DEFAULT_AVATAR = "https://www.w3schools.com/howto/img_avatar.png"
+# Link ảnh Phượng Hoàng Lửa 3D sống động & rực rỡ
+AI_AVATAR_URL = "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=500&q=80" 
 
 # ============================================================
 # GIAO DIỆN & NÂNG CẤP ĐỒ HỌA (ADVANCED UI/UX & AVATAR FIT)
@@ -77,17 +79,17 @@ st.markdown(
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.05) !important;
     }
 
-    /* Avatar Chatbot & Người dùng trong bong bóng chat */
+    /* Avatar Chatbot & Người dùng trong khung chat AI */
     [data-testid="stChatMessageAvatar"] {
         border-radius: 50% !important;
-        border: 2px solid #3B82F6 !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+        border: 2px solid #F59E0B !important;
+        box-shadow: 0 2px 10px rgba(245, 158, 11, 0.3) !important;
         transition: transform 0.2s ease !important;
         object-fit: cover !important;
         object-position: center !important;
     }
     [data-testid="stChatMessageAvatar"]:hover {
-        transform: scale(1.1) !important;
+        transform: scale(1.15) !important;
     }
 
     /* Thanh Nhập Tin Nhắn Nổi */
@@ -138,7 +140,7 @@ st.markdown(
         font-size: 2.4rem;
         font-weight: 900;
         letter-spacing: -0.5px;
-        background: linear-gradient(90deg, #2563EB 0%, #7C3AED 100%);
+        background: linear-gradient(90deg, #EF4444 0%, #F59E0B 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
@@ -509,7 +511,7 @@ except Exception:
     pass
 
 # ============================================================
-# SIDEBAR (Bao gồm Tự Động Cắt & Căn Giữa Avatar)
+# SIDEBAR
 # ============================================================
 with st.sidebar:
     st.markdown(
@@ -527,7 +529,6 @@ with st.sidebar:
         uploaded_avatar = st.file_uploader("Chọn ảnh từ máy...", type=["jpg", "png", "jpeg", "webp"], key="avatar_file")
         if uploaded_avatar and st.button("Lưu Avatar Mới", type="primary", use_container_width=True):
             try:
-                # Cắt ảnh vuông ở giữa bằng Pillow (Center Crop)
                 image = Image.open(uploaded_avatar)
                 width, height = image.size
                 min_dim = min(width, height)
@@ -538,24 +539,19 @@ with st.sidebar:
                 
                 cropped_img = image.crop((left, top, right, bottom))
                 
-                # Chuyển ảnh đã cắt thành bytes
                 img_byte_arr = io.BytesIO()
                 cropped_img.save(img_byte_arr, format='PNG')
                 file_bytes = img_byte_arr.getvalue()
 
                 file_path = f"{u_id}_{int(time.time())}.png"
 
-                # Upload lên Bucket avatars của Supabase
                 supabase.storage.from_("avatars").upload(
                     file_path, 
                     file_bytes, 
                     {"content-type": "image/png"}
                 )
                 
-                # Lấy public URL
                 public_avatar_url = supabase.storage.from_("avatars").get_public_url(file_path)
-
-                # Cập nhật DB
                 supabase.table("users").update({"avatar_url": public_avatar_url}).eq("username", u_id).execute()
                 st.success("✅ Cập nhật avatar thành công!")
                 st.rerun()
@@ -794,11 +790,11 @@ tab_ai, tab_public, tab_community = st.tabs([
 ])
 
 # ------------------------------------------------------------
-# TAB 1: CHAT VỚI AI
+# TAB 1: CHAT VỚI AI (AVATAR PHƯỢNG HOÀNG SỐNG ĐỘNG)
 # ------------------------------------------------------------
 with tab_ai:
     for message in st.session_state[pages_key][current_page]:
-        current_avatar = avatar_url if message["role"] == "user" else "🐦‍🔥"
+        current_avatar = avatar_url if message["role"] == "user" else AI_AVATAR_URL
         with st.chat_message(message["role"], avatar=current_avatar):
             st.markdown(message["content"])
 
@@ -848,7 +844,7 @@ with tab_ai:
                     cached_answer = best_match["answer"]
 
         if cache_hit:
-            with st.chat_message("assistant", avatar="🐦‍🔥"):
+            with st.chat_message("assistant", avatar=AI_AVATAR_URL):
                 st.markdown(cached_answer)
                 st.caption(f"⚡ Phản hồi từ semantic cache ({CACHE_THRESHOLD:.2f})")
 
@@ -897,7 +893,7 @@ with tab_ai:
         else:
             prompt_payload = user_input
 
-        with st.chat_message("assistant", avatar="🐦‍🔥"):
+        with st.chat_message("assistant", avatar=AI_AVATAR_URL):
             try:
                 config = types.GenerateContentConfig(
                     temperature=float(creativity),
@@ -965,12 +961,11 @@ with tab_ai:
                     current_history.pop()
 
 # ------------------------------------------------------------
-# TAB 2: CHAT CỘNG ĐỒNG (TỰ ĐỘNG CẬP NHẬT MỖI 3S)
+# TAB 2: CHAT CỘNG ĐỒNG
 # ------------------------------------------------------------
 with tab_public:
     st.caption("💬 Khung chat chung giữa tất cả các thành viên (Tự động cập nhật mỗi 3 giây).")
 
-    # Tự động làm mới ngầm mỗi 3s
     st_autorefresh(interval=3000, key="public_chat_refresh")
 
     with st.form("public_chat_form", clear_on_submit=True):
