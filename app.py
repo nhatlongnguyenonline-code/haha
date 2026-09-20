@@ -1146,26 +1146,27 @@ with tab_dm:
                 except Exception as exc:
                     sb.error(f"❌ Lỗi tải tin nhắn: {safe_error_message(exc)}")
 
-            col_input, col_send = sb.columns([5, 1])
-            with col_input:
-                dm_input = sb.text_input(
-                    "Nhập tin nhắn...", 
-                    placeholder=f"Nhắn gì đó cho {rec_dname}...", 
-                    label_visibility="collapsed", 
-                    key=f"dm_input_text_{selected_receiver}"
-                )
-            with col_send:
-                sb.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
-                dm_send_btn = sb.button("Gửi ➔", use_container_width=True, type="primary", key=f"dm_send_btn_{selected_receiver}")
+            # Sử dụng st.form với clear_on_submit=True để tự động xóa ô nhập liệu khi gửi thành công, chống spam khi lag
+            with sb.form(key=f"dm_form_{selected_receiver}", clear_on_submit=True):
+                col_input, col_send = sb.columns([5, 1])
+                with col_input:
+                    dm_input = sb.text_input(
+                        "Nhập tin nhắn...", 
+                        placeholder=f"Nhắn gì đó cho {rec_dname}...", 
+                        label_visibility="collapsed"
+                    )
+                with col_send:
+                    sb.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
+                    dm_send_btn = sb.form_submit_button("Gửi ➔", use_container_width=True, type="primary")
 
-            if dm_send_btn and dm_input and dm_input.strip():
-                try:
-                    supabase.table("private_messages").insert({
-                        "sender": u_id,
-                        "receiver": selected_receiver,
-                        "message": dm_input.strip(),
-                        "avatar_url": avatar_url,
-                    }).execute()
-                    sb.rerun()
-                except Exception as exc:
-                    sb.error(f"❌ Không gửi được: {safe_error_message(exc)}")
+                if dm_send_btn and dm_input and dm_input.strip():
+                    try:
+                        supabase.table("private_messages").insert({
+                            "sender": u_id,
+                            "receiver": selected_receiver,
+                            "message": dm_input.strip(),
+                            "avatar_url": avatar_url,
+                        }).execute()
+                        sb.rerun()
+                    except Exception as exc:
+                        sb.error(f"❌ Không gửi được: {safe_error_message(exc)}")
