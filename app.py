@@ -25,7 +25,6 @@ warnings.filterwarnings("ignore")
 st.set_page_config(page_title="Trợ Lý AI Toàn Năng", page_icon="🐦‍🔥", layout="centered")
 st.markdown("""
     <style>
-    /* XÓA HOÀN TOÀN THANH GRADIENT HAI BÊN KHỎI .stApp::before VÀ .stApp::after */
     [data-testid="stSidebar"] { 
         background: linear-gradient(180deg, #F8FAFC 0%, #FFF7ED 100%) !important; 
         border-right: 1px solid #FED7AA !important; 
@@ -133,7 +132,7 @@ except:
 
 if "ai_client" not in st.session_state:
     try: 
-        # SỬA LỖI: Thêm http_options chứa api-key vào header để ép SDK chạy đúng cổng Google AI Studio
+        # SỬA LỖI: Thêm http_options chứa api-key vào header nhằm ép SDK chạy đúng cổng Google AI Studio toàn diện
         st.session_state.ai_client = genai.Client(
             api_key=API_KEY, 
             http_options={'headers': {'x-goog-api-key': API_KEY}}
@@ -167,10 +166,9 @@ if logged_in_user is None:
         lin_pass = st.text_input("Mật khẩu", type="password", key="lin_p")
         if st.button("Đăng Nhập Khách", use_container_width=True, type="primary"):
             res = supabase.table("users").select("*").eq("username", lin_user).execute()
-            # SỬA LỖI: Kiểm tra danh sách hợp lệ và lấy phần tử đầu tiên tránh lỗi mảng/TypeError
             if res.data and len(res.data) > 0:
-                user_record = res.data[0]
-                if bcrypt.checkpw(lin_pass.encode('utf-8'), user_record["password"].encode('utf-8')):
+                user_data = res.data[0]
+                if bcrypt.checkpw(lin_pass.encode('utf-8'), user_data["password"].encode('utf-8')):
                     secure_token = secrets.token_urlsafe(16)
                     st.session_state.global_token_registry[secure_token] = lin_user
                     st.query_params["token"] = secure_token
@@ -198,6 +196,7 @@ if logged_in_user is None:
                         "username": reg_user, "password": hashed_p, "display_name": reg_user
                     }).execute()
                     st.success("📝 Đăng ký thành công! Hãy quay lại tab Đăng Nhập.")
+                
     st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 u_id = logged_in_user
@@ -238,9 +237,8 @@ if cache_key not in st.session_state:
     st.session_state[cache_key] = []
 
 current_page = st.session_state[active_page_key]
-user_info_res = supabase.table("users").select("display_name").eq("username", u_id).execute()
 
-# SỬA LỖI: Tránh sập giao diện khi đọc thuộc tính từ mảng rỗng trả về của Supabase
+user_info_res = supabase.table("users").select("display_name").eq("username", u_id).execute()
 display_name = user_info_res.data[0]["display_name"] if user_info_res.data and len(user_info_res.data) > 0 else u_id
 with st.sidebar:
     st.markdown(f"### 👤 TÀI KHOẢN: **{display_name.upper()}**")
@@ -382,7 +380,7 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
     with st.chat_message("user", avatar="👤"): st.markdown(user_input)
     cau_hoi_clean = user_input.lower().strip()
     
-    # BỘ LỌC TỪ KHÓA KÍCH HOẠT ĐỘC LẬP
+    # BỘ LỌC TỪ KHÓA KÍCH HOẠT ĐỘC LẬP TẠO ẢNH
     image_keywords = ["vẽ", "tạo ảnh", "tạo hình", "bức tranh", "bức ảnh", "hình ảnh về", "vẽ tranh", "ảnh", "tạo"]
     is_image_request = any(word in cau_hoi_clean for word in image_keywords)
     
@@ -404,7 +402,6 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                     safe_prompt = urllib.parse.quote(english_prompt)
                     random_seed = secrets.randbelow(999999)
                     
-                    # SỬA LỖI: Sửa đổi cấu trúc định tuyến URL chính xác theo chuẩn cổng API Pollinations
                     img_url = f"https://pollinations.ai{safe_prompt}?width=1024&height=1024&nologo=true&private=true&seed={random_seed}"
                     
                     html_code = f"""
