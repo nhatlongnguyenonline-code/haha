@@ -727,18 +727,17 @@ st.markdown(
         <span class="premium-logo">🐦‍🔥</span>
         <span class="premium-text">TRỢ LÝ AI & CỘNG ĐỒNG</span>
     </div>
-    <div class="sub-title">Tích hợp AI Chatbot, Phòng Chat Chung & Bảng Tin Prompt</div>
+    <div class="sub-title">Tích hợp AI Chatbot & Phòng Chat Chung</div>
     """,
     unsafe_allow_html=True,
 )
 
 # ============================================================
-# TABS CHÍNH
+# TABS CHÍNH (Đã bỏ Bảng Tin Prompt)
 # ============================================================
-tab_ai, tab_public, tab_community = st.tabs([
+tab_ai, tab_public = st.tabs([
     "🤖 Chat Với AI", 
-    "💬 Chat Cộng Đồng", 
-    "🌟 Bảng Tin Prompt"
+    "💬 Chat Cộng Đồng"
 ])
 
 # ------------------------------------------------------------
@@ -749,23 +748,6 @@ with tab_ai:
         current_avatar = avatar_url if message["role"] == "user" else AI_AVATAR_EMOJI
         with st.chat_message(message["role"], avatar=current_avatar):
             st.markdown(message["content"])
-
-    if st.session_state[pages_key][current_page]:
-        hist = st.session_state[pages_key][current_page]
-        if len(hist) >= 2 and hist[-1]["role"] == "assistant":
-            if st.button("📤 Chia sẻ câu trả lời hay nhất này lên Bảng Tin Prompt", use_container_width=True):
-                try:
-                    last_prompt = hist[-2]["content"]
-                    last_answer = hist[-1]["content"]
-                    supabase.table("community_prompts").insert({
-                        "username": display_name,
-                        "prompt": last_prompt,
-                        "ai_response": last_answer,
-                        "avatar_url": avatar_url,
-                    }).execute()
-                    st.success("🎉 Đã chia sẻ thành công lên Bảng Tin Prompt!")
-                except Exception as exc:
-                    st.error(f"❌ Lỗi chia sẻ: {safe_error_message(exc)}")
 
     if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
         user_input = user_input.strip()
@@ -1013,47 +995,3 @@ with tab_public:
 
     except Exception as exc:
         st.error(f"❌ Lỗi tải tin nhắn cộng đồng: {safe_error_message(exc)}")
-
-# ------------------------------------------------------------
-# TAB 3: BẢNG TIN PROMPT
-# ------------------------------------------------------------
-with tab_community:
-    st.caption("🌟 Nơi chia sẻ những câu hỏi (Prompt) hay và câu trả lời AI ấn tượng nhất.")
-
-    try:
-        res_feed = (
-            supabase.table("community_prompts")
-            .select("*")
-            .order("likes", desc=True)
-            .order("id", desc=True)
-            .limit(20)
-            .execute()
-        )
-        feed_items = res_feed.data or []
-
-        if not feed_items:
-            st.info("Chưa có chia sẻ nào. Trải nghiệm chat AI và bấm nút 'Chia sẻ' ở Tab Chat nhé!")
-        else:
-            for card in feed_items:
-                c_id = card.get("id")
-                c_user = card.get("username", "Vô danh")
-                c_prompt = card.get("prompt", "")
-                c_answer = card.get("ai_response", "")
-                c_likes = card.get("likes", 0)
-
-                with st.expander(f"📌 Chia sẻ từ **{c_user}**: *\"{c_prompt[:50]}...\"*"):
-                    st.markdown(f"**❓ Câu hỏi / Prompt:**\n> {c_prompt}")
-                    st.markdown(f"**🤖 AI Trả lời:**\n{c_answer}")
-                    
-                    col_like, col_info = st.columns([1, 4])
-                    with col_like:
-                        if st.button(f"❤️ Thích ({c_likes})", key=f"like_{c_id}"):
-                            try:
-                                supabase.table("community_prompts").update({
-                                    "likes": c_likes + 1
-                                }).eq("id", c_id).execute()
-                                st.rerun()
-                            except Exception:
-                                pass
-    except Exception as exc:
-        st.error(f"❌ Lỗi tải bảng tin Prompt: {safe_error_message(exc)}")
