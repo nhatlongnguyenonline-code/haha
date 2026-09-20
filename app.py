@@ -683,11 +683,13 @@ tab_ai, tab_public, tab_dm = sb.tabs([
 # TAB 1: CHAT VỚI AI
 # ------------------------------------------------------------
 with tab_ai:
+    # 1. Hiển thị lịch sử chat trước tiên để avatar phượng hoàng hiện đúng vị trí
     for message in sb.session_state[pages_key][current_page]:
         current_avatar = avatar_url if message["role"] == "user" else AI_AVATAR_EMOJI
         with sb.chat_message(message["role"], avatar=current_avatar):
             sb.markdown(message["content"])
 
+    # 2. Khung chat_input đặt ở dưới cùng
     if user_input := sb.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
         user_input = user_input.strip()
         if not user_input:
@@ -759,7 +761,7 @@ with tab_ai:
             prompt_payload = (
                 "Bạn là Trợ lý AI Toàn năng. Hãy trả lời bằng tiếng Việt nếu người dùng hỏi bằng tiếng Việt. "
                 "Dữ liệu web bên dưới chỉ là nguồn tham khảo; không được tự bịa thông tin không có trong dữ liệu hoặc kiến thức của bạn. "
-                "Если nguồn mâu thuẫn hoặc không đủ chắc chắn, hãy nói rõ điều đó.\n\n"
+                "Nếu nguồn mâu thuẫn hoặc không đủ chắc chắn, hãy nói rõ điều đó.\n\n"
                 f"DỮ LIỆU WEB:\n{combined_context}\n\n"
                 f"CÂU HỎI:\n{user_input}"
             )
@@ -1143,7 +1145,6 @@ with tab_dm:
                 except Exception as exc:
                     sb.error(f"❌ Lỗi tải tin nhắn: {safe_error_message(exc)}")
 
-            # Quản lý state input riêng tư chống spam
             input_key = f"widget_dm_input_{selected_receiver}"
             if input_key not in sb.session_state:
                 sb.session_state[input_key] = ""
