@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 import numpy as np
 import requests
 import bcrypt
-import streamlit as st
+import streamlit as sb
 from bs4 import BeautifulSoup
 from PIL import Image
 from google import genai
@@ -24,17 +24,17 @@ warnings.filterwarnings("ignore")
 # ============================================================
 # CẤU HÌNH TRANG STREAMLIT
 # ============================================================
-st.set_page_config(
+sb.set_page_config(
     page_title="Trợ Lý AI & Zalo Style Chat",
     page_icon="💬",
     layout="wide",
 )
 
-AI_MODEL = st.secrets.get("GEMINI_MODEL", "gemini-3.6-flash")
-EMBEDDING_MODEL = st.secrets.get("EMBEDDING_MODEL", "gemini-embedding-001")
-CACHE_THRESHOLD = float(st.secrets.get("CACHE_THRESHOLD", 0.85))
-MAX_WEB_RESULTS = int(st.secrets.get("MAX_WEB_RESULTS", 3))
-MAX_PAGE_TEXT = int(st.secrets.get("MAX_PAGE_TEXT", 2500))
+AI_MODEL = sb.secrets.get("GEMINI_MODEL", "gemini-3.6-flash")
+EMBEDDING_MODEL = sb.secrets.get("EMBEDDING_MODEL", "gemini-embedding-001")
+CACHE_THRESHOLD = float(sb.secrets.get("CACHE_THRESHOLD", 0.85))
+MAX_WEB_RESULTS = int(sb.secrets.get("MAX_WEB_RESULTS", 3))
+MAX_PAGE_TEXT = int(sb.secrets.get("MAX_PAGE_TEXT", 2500))
 
 DEFAULT_AVATAR = "https://www.w3schools.com/howto/img_avatar.png"
 AI_AVATAR_EMOJI = "🐦‍🔥"
@@ -42,17 +42,17 @@ AI_AVATAR_EMOJI = "🐦‍🔥"
 # ============================================================
 # GIAO DIỆN & NÂNG CẤP ĐỒ HỌA (ZALO STYLE)
 # ============================================================
-st.markdown(
+sb.markdown(
     """
     <style>
     .main {
         background-color: #F0F2F5 !important;
     }
-    [data-testid="stSidebar"] {
+    [data-testid="sbSidebar"] {
         background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
         border-right: 1px solid #E2E8F0 !important;
     }
-    [data-testid="stChatMessage"] {
+    [data-testid="sbChatMessage"] {
         border-radius: 16px !important;
         margin-bottom: 14px !important;
         padding: 14px 18px !important;
@@ -82,7 +82,7 @@ st.markdown(
         font-weight: 500;
         margin-bottom: 1rem;
     }
-    .stButton button {
+    .sbButton button {
         border-radius: 10px !important;
         font-weight: 600 !important;
     }
@@ -149,7 +149,7 @@ st.markdown(
 def safe_error_message(exc):
     text = str(exc).replace("\n", " ")
     for secret_name in ("GEMINI_API_KEY", "SUPABASE_KEY", "SUPABASE_URL"):
-        secret_value = st.secrets.get(secret_name, "")
+        secret_value = sb.secrets.get(secret_name, "")
         if secret_value:
             text = text.replace(str(secret_value), "[REDACTED]")
     return text[:500]
@@ -176,23 +176,23 @@ def next_page_name(pages):
 # ============================================================
 # KẾT NỐI SECRETS / SUPABASE / GEMINI
 # ============================================================
-missing = [k for k in ("SUPABASE_URL", "SUPABASE_KEY", "GEMINI_API_KEY") if not st.secrets.get(k)]
+missing = [k for k in ("SUPABASE_URL", "SUPABASE_KEY", "GEMINI_API_KEY") if not sb.secrets.get(k)]
 if missing:
-    st.error("⚠️ Thiếu cấu hình Secrets: " + ", ".join(missing))
-    st.stop()
+    sb.error("⚠️ Thiếu cấu hình Secrets: " + ", ".join(missing))
+    sb.stop()
 
 try:
-    supabase: Client = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
+    supabase: Client = create_client(sb.secrets["SUPABASE_URL"], sb.secrets["SUPABASE_KEY"])
 except Exception as exc:
-    st.error(f"❌ Không thể kết nối Supabase: {safe_error_message(exc)}")
-    st.stop()
+    sb.error(f"❌ Không thể kết nối Supabase: {safe_error_message(exc)}")
+    sb.stop()
 
-if "ai_client" not in st.session_state:
+if "ai_client" not in sb.session_state:
     try:
-        st.session_state.ai_client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+        sb.session_state.ai_client = genai.Client(api_key=sb.secrets["GEMINI_API_KEY"])
     except Exception as exc:
-        st.error(f"❌ Không thể khởi tạo Gemini: {safe_error_message(exc)}")
-        st.stop()
+        sb.error(f"❌ Không thể khởi tạo Gemini: {safe_error_message(exc)}")
+        sb.stop()
 
 # ============================================================
 # EMBEDDING / CACHE
@@ -201,7 +201,7 @@ def get_embedding(text):
     if not text or not text.strip():
         return None
     try:
-        response = st.session_state.ai_client.models.embed_content(
+        response = sb.session_state.ai_client.models.embed_content(
             model=EMBEDDING_MODEL,
             contents=text.strip(),
         )
@@ -228,27 +228,27 @@ def cosine_similarity(a, b):
 # ============================================================
 # SESSION LOGIN
 # ============================================================
-if "global_token_registry" not in st.session_state:
-    st.session_state.global_token_registry = {}
+if "global_token_registry" not in sb.session_state:
+    sb.session_state.global_token_registry = {}
 
-url_token = st.query_params.get("token")
+url_token = sb.query_params.get("token")
 logged_in_user = None
 
 if url_token:
-    logged_in_user = st.session_state.global_token_registry.get(url_token)
+    logged_in_user = sb.session_state.global_token_registry.get(url_token)
 
 if logged_in_user is None:
-    st.markdown('<div class="login-box">', unsafe_allow_html=True)
-    tab_l1, tab_l2 = st.tabs(["🔒 Đăng Nhập", "📝 Đăng Ký Tài Khoản"])
+    sb.markdown('<div class="login-box">', unsafe_allow_html=True)
+    tab_l1, tab_l2 = sb.tabs(["🔒 Đăng Nhập", "📝 Đăng Ký Tài Khoản"])
 
     with tab_l1:
-        st.subheader("Đăng nhập hệ thống")
-        lin_user = st.text_input("Tên đăng nhập", key="lin_u").strip()
-        lin_pass = st.text_input("Mật khẩu", type="password", key="lin_p")
+        sb.subheader("Đăng nhập hệ thống")
+        lin_user = sb.text_input("Tên đăng nhập", key="lin_u").strip()
+        lin_pass = sb.text_input("Mật khẩu", type="password", key="lin_p")
 
-        if st.button("Đăng Nhập", use_container_width=True, type="primary"):
+        if sb.button("Đăng Nhập", use_container_width=True, type="primary"):
             if not lin_user or not lin_pass:
-                st.warning("⚠️ Vui lòng nhập đầy đủ tài khoản và mật khẩu.")
+                sb.warning("⚠️ Vui lòng nhập đầy đủ tài khoản và mật khẩu.")
             else:
                 try:
                     res = (
@@ -259,7 +259,7 @@ if logged_in_user is None:
                         .execute()
                     )
                     if not res.data:
-                        st.error("❌ Tài khoản không tồn tại.")
+                        sb.error("❌ Tài khoản không tồn tại.")
                     else:
                         stored_hash = res.data[0].get("password", "")
                         valid = False
@@ -273,29 +273,29 @@ if logged_in_user is None:
 
                         if valid:
                             secure_token = secrets.token_urlsafe(32)
-                            st.session_state.global_token_registry[secure_token] = lin_user
-                            st.query_params["token"] = secure_token
-                            st.rerun()
+                            sb.session_state.global_token_registry[secure_token] = lin_user
+                            sb.query_params["token"] = secure_token
+                            sb.rerun()
                         else:
-                            st.error("❌ Sai mật khẩu.")
+                            sb.error("❌ Sai mật khẩu.")
                 except Exception as exc:
-                    st.error(f"❌ Lỗi đăng nhập: {safe_error_message(exc)}")
+                    sb.error(f"❌ Lỗi đăng nhập: {safe_error_message(exc)}")
 
     with tab_l2:
-        st.subheader("Tạo tài khoản mới")
-        reg_user = st.text_input("Tên đăng nhập mới", key="reg_u").strip()
-        reg_pass = st.text_input("Mật khẩu mới", type="password", key="reg_p")
-        reg_pass2 = st.text_input("Nhập lại mật khẩu", type="password", key="reg_p2")
+        sb.subheader("Tạo tài khoản mới")
+        reg_user = sb.text_input("Tên đăng nhập mới", key="reg_u").strip()
+        reg_pass = sb.text_input("Mật khẩu mới", type="password", key="reg_p")
+        reg_pass2 = sb.text_input("Nhập lại mật khẩu", type="password", key="reg_p2")
 
-        if st.button("Xác Nhận Đăng Ký", use_container_width=True):
+        if sb.button("Xác Nhận Đăng Ký", use_container_width=True):
             if not reg_user or not reg_pass.strip():
-                st.warning("⚠️ Không được để trống tài khoản hoặc mật khẩu.")
+                sb.warning("⚠️ Không được để trống tài khoản hoặc mật khẩu.")
             elif len(reg_user) < 3:
-                st.warning("⚠️ Tên đăng nhập cần ít nhất 3 ký tự.")
+                sb.warning("⚠️ Tên đăng nhập cần ít nhất 3 ký tự.")
             elif len(reg_pass) < 6:
-                st.warning("⚠️ Mật khẩu cần ít nhất 6 ký tự.")
+                sb.warning("⚠️ Mật khẩu cần ít nhất 6 ký tự.")
             elif reg_pass != reg_pass2:
-                st.error("❌ Hai mật khẩu không giống nhau.")
+                sb.error("❌ Hai mật khẩu không giống nhau.")
             else:
                 try:
                     check_res = (
@@ -306,7 +306,7 @@ if logged_in_user is None:
                         .execute()
                     )
                     if check_res.data:
-                        st.error("❌ Tên đăng nhập này đã được sử dụng.")
+                        sb.error("❌ Tên đăng nhập này đã được sử dụng.")
                     else:
                         hashed_p = bcrypt.hashpw(
                             reg_pass.encode("utf-8"), bcrypt.gensalt()
@@ -317,12 +317,12 @@ if logged_in_user is None:
                             "display_name": reg_user,
                             "avatar_url": DEFAULT_AVATAR
                         }).execute()
-                        st.success("✅ Đăng ký thành công! Hãy đăng nhập.")
+                        sb.success("✅ Đăng ký thành công! Hãy đăng nhập.")
                 except Exception as exc:
-                    st.error(f"❌ Không thể đăng ký: {safe_error_message(exc)}")
+                    sb.error(f"❌ Không thể đăng ký: {safe_error_message(exc)}")
 
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.stop()
+    sb.markdown('</div>', unsafe_allow_html=True)
+    sb.stop()
 
 # ============================================================
 # STATE CỦA USER
@@ -333,8 +333,8 @@ active_page_key = f"active_page_{u_id}"
 cache_key = f"cache_{u_id}"
 hidden_public_msgs_key = f"hidden_public_msgs_{u_id}"
 
-if hidden_public_msgs_key not in st.session_state:
-    st.session_state[hidden_public_msgs_key] = set()
+if hidden_public_msgs_key not in sb.session_state:
+    sb.session_state[hidden_public_msgs_key] = set()
 
 def download_supabase_history(username):
     pages = {}
@@ -350,7 +350,7 @@ def download_supabase_history(username):
             if page_name:
                 pages[page_name] = normalize_history(row.get("history_data"))
     except Exception as exc:
-        st.error(f"❌ Không tải được lịch sử chat: {safe_error_message(exc)}")
+        sb.error(f"❌ Không tải được lịch sử chat: {safe_error_message(exc)}")
     return pages
 
 def upload_single_page_supabase(username, page_name, data_list):
@@ -365,26 +365,26 @@ def upload_single_page_supabase(username, page_name, data_list):
         ).execute()
         return True
     except Exception as exc:
-        st.error(f"❌ Không lưu được lịch sử: {safe_error_message(exc)}")
+        sb.error(f"❌ Không lưu được lịch sử: {safe_error_message(exc)}")
         return False
 
-if pages_key not in st.session_state:
+if pages_key not in sb.session_state:
     db_pages = download_supabase_history(u_id)
     if not db_pages:
         db_pages = {"Trang Chat 1": []}
         upload_single_page_supabase(u_id, "Trang Chat 1", [])
-    st.session_state[pages_key] = db_pages
+    sb.session_state[pages_key] = db_pages
 
-if active_page_key not in st.session_state:
-    st.session_state[active_page_key] = list(st.session_state[pages_key].keys())[-1]
+if active_page_key not in sb.session_state:
+    sb.session_state[active_page_key] = list(sb.session_state[pages_key].keys())[-1]
 
-if cache_key not in st.session_state:
-    st.session_state[cache_key] = []
+if cache_key not in sb.session_state:
+    sb.session_state[cache_key] = []
 
-current_page = st.session_state[active_page_key]
-if current_page not in st.session_state[pages_key]:
-    current_page = list(st.session_state[pages_key].keys())[-1]
-    st.session_state[active_page_key] = current_page
+current_page = sb.session_state[active_page_key]
+if current_page not in sb.session_state[pages_key]:
+    current_page = list(sb.session_state[pages_key].keys())[-1]
+    sb.session_state[active_page_key] = current_page
 
 display_name = u_id
 avatar_url = DEFAULT_AVATAR
@@ -407,8 +407,8 @@ except Exception:
 # ============================================================
 # SIDEBAR
 # ============================================================
-with st.sidebar:
-    st.markdown(
+with sb.sidebar:
+    sb.markdown(
         f"""
         <div class="profile-card">
             <img src="{avatar_url}" class="profile-avatar" />
@@ -418,9 +418,9 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    with st.popover("🖼️ Đổi Avatar"):
-        uploaded_avatar = st.file_uploader("Chọn ảnh từ máy...", type=["jpg", "png", "jpeg", "webp"], key="avatar_file")
-        if uploaded_avatar and st.button("Lưu Avatar Mới", type="primary", use_container_width=True):
+    with sb.popover("🖼️ Đổi Avatar"):
+        uploaded_avatar = sb.file_uploader("Chọn ảnh từ máy...", type=["jpg", "png", "jpeg", "webp"], key="avatar_file")
+        if uploaded_avatar and sb.button("Lưu Avatar Mới", type="primary", use_container_width=True):
             try:
                 image = Image.open(uploaded_avatar)
                 width, height = image.size
@@ -446,117 +446,117 @@ with st.sidebar:
                 
                 public_avatar_url = supabase.storage.from_("avatars").get_public_url(file_path)
                 supabase.table("users").update({"avatar_url": public_avatar_url}).eq("username", u_id).execute()
-                st.success("✅ Cập nhật avatar thành công!")
-                st.rerun()
+                sb.success("✅ Cập nhật avatar thành công!")
+                sb.rerun()
             except Exception as exc:
-                st.error(f"❌ Lỗi tải avatar: {safe_error_message(exc)}")
+                sb.error(f"❌ Lỗi tải avatar: {safe_error_message(exc)}")
 
     rename_user_key = f"rename_user_mode_{u_id}"
-    if rename_user_key not in st.session_state:
-        st.session_state[rename_user_key] = False
+    if rename_user_key not in sb.session_state:
+        sb.session_state[rename_user_key] = False
 
-    if not st.session_state[rename_user_key]:
-        if st.button("✏️ Đổi tên hiển thị", use_container_width=True):
-            st.session_state[rename_user_key] = True
-            st.rerun()
+    if not sb.session_state[rename_user_key]:
+        if sb.button("✏️ Đổi tên hiển thị", use_container_width=True):
+            sb.session_state[rename_user_key] = True
+            sb.rerun()
     else:
-        new_name = st.text_input("Nhập tên hiển thị mới:", value=display_name).strip()
-        col_u1, col_u2 = st.columns(2)
+        new_name = sb.text_input("Nhập tên hiển thị mới:", value=display_name).strip()
+        col_u1, col_u2 = sb.columns(2)
         with col_u1:
-            if st.button("💾 Lưu tên", use_container_width=True, type="primary"):
+            if sb.button("💾 Lưu tên", use_container_width=True, type="primary"):
                 if new_name:
                     try:
                         supabase.table("users").update({"display_name": new_name}).eq(
                             "username", u_id
                         ).execute()
                     except Exception as exc:
-                        st.error(f"❌ Không đổi được tên: {safe_error_message(exc)}")
-                st.session_state[rename_user_key] = False
-                st.rerun()
+                        sb.error(f"❌ Không đổi được tên: {safe_error_message(exc)}")
+                sb.session_state[rename_user_key] = False
+                sb.rerun()
         with col_u2:
-            if st.button("Hủy", use_container_width=True):
-                st.session_state[rename_user_key] = False
-                st.rerun()
+            if sb.button("Hủy", use_container_width=True):
+                sb.session_state[rename_user_key] = False
+                sb.rerun()
 
-    if st.button("🚪 Đăng Xuất Hệ Thống", use_container_width=True):
-        token = st.query_params.get("token")
+    if sb.button("🚪 Đăng Xuất Hệ Thống", use_container_width=True):
+        token = sb.query_params.get("token")
         if token:
-            st.session_state.global_token_registry.pop(token, None)
-        st.query_params.clear()
-        for key in list(st.session_state.keys()):
+            sb.session_state.global_token_registry.pop(token, None)
+        sb.query_params.clear()
+        for key in list(sb.session_state.keys()):
             if key.startswith(("chat_pages_", "active_page_", "cache_", "ai_session_", "rename_", "hidden_public_msgs_")):
-                del st.session_state[key]
-        st.rerun()
+                del sb.session_state[key]
+        sb.rerun()
 
-    st.markdown("---")
-    st.markdown("### 💬 QUẢN LÝ PHÒNG CHAT AI")
+    sb.markdown("---")
+    sb.markdown("### 💬 QUẢN LÝ PHÒNG CHAT AI")
 
-    if st.button("➕ Tạo trang chat mới", use_container_width=True, type="primary"):
-        pages = st.session_state[pages_key]
+    if sb.button("➕ Tạo trang chat mới", use_container_width=True, type="primary"):
+        pages = sb.session_state[pages_key]
         new_page_name = next_page_name(pages)
         pages[new_page_name] = []
         upload_single_page_supabase(u_id, new_page_name, [])
-        st.session_state[active_page_key] = new_page_name
-        st.rerun()
+        sb.session_state[active_page_key] = new_page_name
+        sb.rerun()
 
-    page_options = list(st.session_state[pages_key].keys())
-    selected_page = st.selectbox(
+    page_options = list(sb.session_state[pages_key].keys())
+    selected_page = sb.selectbox(
         "Chọn trang hội thoại đang xem:",
         page_options,
         index=page_options.index(current_page),
     )
     if selected_page != current_page:
-        st.session_state[active_page_key] = selected_page
-        st.rerun()
+        sb.session_state[active_page_key] = selected_page
+        sb.rerun()
 
     rename_page_key = f"rename_mode_{u_id}"
-    if rename_page_key not in st.session_state:
-        st.session_state[rename_page_key] = False
+    if rename_page_key not in sb.session_state:
+        sb.session_state[rename_page_key] = False
 
-    if not st.session_state[rename_page_key]:
-        if st.button("✏️ Đổi tên trang này", use_container_width=True):
-            st.session_state[rename_page_key] = True
-            st.rerun()
+    if not sb.session_state[rename_page_key]:
+        if sb.button("✏️ Đổi tên trang này", use_container_width=True):
+            sb.session_state[rename_page_key] = True
+            sb.rerun()
     else:
-        new_title = st.text_input("Nhập tên mới:", value=current_page).strip()
-        col_r1, col_r2 = st.columns(2)
+        new_title = sb.text_input("Nhập tên mới:", value=current_page).strip()
+        col_r1, col_r2 = sb.columns(2)
         with col_r1:
-            if st.button("✅ Lưu tên", use_container_width=True, type="primary"):
+            if sb.button("✅ Lưu tên", use_container_width=True, type="primary"):
                 if not new_title:
-                    st.warning("Tên trang không được để trống.")
+                    sb.warning("Tên trang không được để trống.")
                 elif new_title == current_page:
-                    st.session_state[rename_page_key] = False
-                    st.rerun()
-                elif new_title in st.session_state[pages_key]:
-                    st.error("❌ Tên trang đã tồn tại.")
+                    sb.session_state[rename_page_key] = False
+                    sb.rerun()
+                elif new_title in sb.session_state[pages_key]:
+                    sb.error("❌ Tên trang đã tồn tại.")
                 else:
-                    old_history = st.session_state[pages_key][current_page]
+                    old_history = sb.session_state[pages_key][current_page]
                     try:
                         supabase.table("chat_histories").delete().eq("username", u_id).eq(
                             "page_name", current_page
                         ).execute()
                         upload_single_page_supabase(u_id, new_title, old_history)
-                        st.session_state[pages_key][new_title] = st.session_state[pages_key].pop(current_page)
-                        st.session_state[active_page_key] = new_title
-                        st.session_state.pop(f"ai_session_{u_id}_{current_page}", None)
+                        sb.session_state[pages_key][new_title] = sb.session_state[pages_key].pop(current_page)
+                        sb.session_state[active_page_key] = new_title
+                        sb.session_state.pop(f"ai_session_{u_id}_{current_page}", None)
                     except Exception as exc:
-                        st.error(f"❌ Không đổi được tên trang: {safe_error_message(exc)}")
-                    st.session_state[rename_page_key] = False
-                    st.rerun()
+                        sb.error(f"❌ Không đổi được tên trang: {safe_error_message(exc)}")
+                    sb.session_state[rename_page_key] = False
+                    sb.rerun()
         with col_r2:
-            if st.button("❌ Hủy", use_container_width=True):
-                st.session_state[rename_page_key] = False
-                st.rerun()
+            if sb.button("❌ Hủy", use_container_width=True):
+                sb.session_state[rename_page_key] = False
+                sb.rerun()
 
-    st.markdown("---")
-    st.markdown("### 🎵 NHẠC CHILL THƯ GIÃN")
+    sb.markdown("---")
+    sb.markdown("### 🎵 NHẠC CHILL THƯ GIÃN")
     LOFI_URL = "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3"
-    st.markdown("☕ **Lofi Study Chill**")
-    st.audio(LOFI_URL, format="audio/mp3", loop=True)
+    sb.markdown("☕ **Lofi Study Chill**")
+    sb.audio(LOFI_URL, format="audio/mp3", loop=True)
 
-    st.markdown("---")
-    st.markdown("### ⚙️ CÀI ĐẶT CHATBOT")
-    creativity = st.slider(
+    sb.markdown("---")
+    sb.markdown("### ⚙️ CÀI ĐẶT CHATBOT")
+    creativity = sb.slider(
         "🧠 Độ nhạy bén / Sáng tạo",
         min_value=0.1,
         max_value=1.0,
@@ -564,45 +564,45 @@ with st.sidebar:
         step=0.1,
     )
 
-    st.markdown("---")
-    st.markdown("### 📸 PHÂN TÍCH HÌNH ẢNH")
-    uploaded_file = st.file_uploader(
+    sb.markdown("---")
+    sb.markdown("### 📸 PHÂN TÍCH HÌNH ẢNH")
+    uploaded_file = sb.file_uploader(
         "Tải ảnh lên tại đây...",
         type=["png", "jpg", "jpeg", "webp"],
     )
     if uploaded_file:
         try:
             preview = Image.open(uploaded_file)
-            st.image(preview, caption="Ảnh đã chọn", use_container_width=True)
+            sb.image(preview, caption="Ảnh đã chọn", use_container_width=True)
         except Exception:
-            st.error("❌ File ảnh không hợp lệ.")
+            sb.error("❌ File ảnh không hợp lệ.")
             uploaded_file = None
 
-    st.markdown("---")
-    st.markdown("### 📂 NHẬT KÝ TRANG HIỆN TẠI")
-    col1, col2 = st.columns(2)
+    sb.markdown("---")
+    sb.markdown("### 📂 NHẬT KÝ TRANG HIỆN TẠI")
+    col1, col2 = sb.columns(2)
     with col1:
-        if st.button("🗑 Dọn tin", use_container_width=True):
-            st.session_state[pages_key][current_page] = []
+        if sb.button("🗑 Dọn tin", use_container_width=True):
+            sb.session_state[pages_key][current_page] = []
             upload_single_page_supabase(u_id, current_page, [])
-            st.session_state.pop(f"ai_session_{u_id}_{current_page}", None)
-            st.rerun()
+            sb.session_state.pop(f"ai_session_{u_id}_{current_page}", None)
+            sb.rerun()
 
     with col2:
         if len(page_options) > 1:
-            if st.button("❌ Xóa trang", use_container_width=True):
+            if sb.button("❌ Xóa trang", use_container_width=True):
                 try:
                     supabase.table("chat_histories").delete().eq("username", u_id).eq(
                         "page_name", current_page
                     ).execute()
-                    del st.session_state[pages_key][current_page]
-                    st.session_state[active_page_key] = list(st.session_state[pages_key].keys())[-1]
-                    st.session_state.pop(f"ai_session_{u_id}_{current_page}", None)
-                    st.rerun()
+                    del sb.session_state[pages_key][current_page]
+                    sb.session_state[active_page_key] = list(sb.session_state[pages_key].keys())[-1]
+                    sb.session_state.pop(f"ai_session_{u_id}_{current_page}", None)
+                    sb.rerun()
                 except Exception as exc:
-                    st.error(f"❌ Không xóa được trang: {safe_error_message(exc)}")
+                    sb.error(f"❌ Không xóa được trang: {safe_error_message(exc)}")
         else:
-            st.caption("🔒 Giữ lại 1 trang.")
+            sb.caption("🔒 Giữ lại 1 trang.")
 
 # ============================================================
 # WEB SEARCH
@@ -660,7 +660,7 @@ def extract_web_content(url):
 # ============================================================
 # TITLE
 # ============================================================
-st.markdown(
+sb.markdown(
     """
     <div class="premium-title-container">
         <span class="premium-logo">💬</span>
@@ -674,7 +674,7 @@ st.markdown(
 # ============================================================
 # TABS CHÍNH
 # ============================================================
-tab_ai, tab_public, tab_dm = st.tabs([
+tab_ai, tab_public, tab_dm = sb.tabs([
     "🤖 Chat Với AI", 
     "💬 Chat Cộng Đồng",
     "🔒 Tin Nhắn Riêng Tư (Zalo Style)"
@@ -684,31 +684,31 @@ tab_ai, tab_public, tab_dm = st.tabs([
 # TAB 1: CHAT VỚI AI
 # ------------------------------------------------------------
 with tab_ai:
-    for message in st.session_state[pages_key][current_page]:
+    for message in sb.session_state[pages_key][current_page]:
         current_avatar = avatar_url if message["role"] == "user" else AI_AVATAR_EMOJI
-        with st.chat_message(message["role"], avatar=current_avatar):
-            st.markdown(message["content"])
+        with sb.chat_message(message["role"], avatar=current_avatar):
+            sb.markdown(message["content"])
 
-    if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
+    if user_input := sb.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
         user_input = user_input.strip()
         if not user_input:
-            st.stop()
+            sb.stop()
 
-        current_history = st.session_state[pages_key][current_page]
+        current_history = sb.session_state[pages_key][current_page]
         current_history.append({"role": "user", "content": user_input})
 
-        with st.chat_message("user", avatar=avatar_url):
-            st.markdown(user_input)
+        with sb.chat_message("user", avatar=avatar_url):
+            sb.markdown(user_input)
 
         cache_hit = False
         cached_answer = ""
 
-        if not uploaded_file and st.session_state[cache_key]:
+        if not uploaded_file and sb.session_state[cache_key]:
             current_embedding = get_embedding(user_input)
             if current_embedding is not None:
                 best_score = -1.0
                 best_match = None
-                for item in st.session_state[cache_key]:
+                for item in sb.session_state[cache_key]:
                     score = cosine_similarity(current_embedding, item.get("embedding"))
                     if score > best_score:
                         best_score = score
@@ -718,13 +718,13 @@ with tab_ai:
                     cached_answer = best_match["answer"]
 
         if cache_hit:
-            with st.chat_message("assistant", avatar=AI_AVATAR_EMOJI):
-                st.markdown(cached_answer)
-                st.caption(f"⚡ Phản hồi từ semantic cache ({CACHE_THRESHOLD:.2f})")
+            with sb.chat_message("assistant", avatar=AI_AVATAR_EMOJI):
+                sb.markdown(cached_answer)
+                sb.caption(f"⚡ Phản hồi từ semantic cache ({CACHE_THRESHOLD:.2f})")
 
             current_history.append({"role": "assistant", "content": cached_answer})
             upload_single_page_supabase(u_id, current_page, current_history)
-            st.stop()
+            sb.stop()
 
         cau_hoi_clean = user_input.lower()
         keywords = [
@@ -744,7 +744,7 @@ with tab_ai:
         sources = []
 
         if need_web and not uploaded_file:
-            with st.status("🔍 Đang tra cứu thông tin thực tế...", expanded=False) as status:
+            with sb.status("🔍 Đang tra cứu thông tin thực tế...", expanded=False) as status:
                 web_links = search_the_web_ddg(user_input)
                 for link in web_links:
                     content = extract_web_content(link)
@@ -767,7 +767,7 @@ with tab_ai:
         else:
             prompt_payload = user_input
 
-        with st.chat_message("assistant", avatar=AI_AVATAR_EMOJI):
+        with sb.chat_message("assistant", avatar=AI_AVATAR_EMOJI):
             try:
                 config = types.GenerateContentConfig(
                     temperature=float(creativity),
@@ -776,19 +776,19 @@ with tab_ai:
                 if uploaded_file:
                     uploaded_file.seek(0)
                     image = Image.open(uploaded_file).convert("RGB")
-                    response_stream = st.session_state.ai_client.models.generate_content_stream(
+                    response_stream = sb.session_state.ai_client.models.generate_content_stream(
                         model=AI_MODEL,
                         contents=[image, prompt_payload],
                         config=config,
                     )
                 else:
                     chat_session_key = f"ai_session_{u_id}_{current_page}"
-                    if chat_session_key not in st.session_state:
-                        st.session_state[chat_session_key] = st.session_state.ai_client.chats.create(
+                    if chat_session_key not in sb.session_state:
+                        sb.session_state[chat_session_key] = sb.session_state.ai_client.chats.create(
                             model=AI_MODEL,
                             config=config,
                         )
-                    response_stream = st.session_state[chat_session_key].send_message_stream(
+                    response_stream = sb.session_state[chat_session_key].send_message_stream(
                         message=prompt_payload,
                         config=config,
                     )
@@ -799,18 +799,18 @@ with tab_ai:
                         if text:
                             yield text
 
-                ai_response = st.write_stream(response_generator())
+                ai_response = sb.write_stream(response_generator())
                 ai_response = ai_response if isinstance(ai_response, str) else str(ai_response or "")
 
                 if not ai_response.strip():
                     ai_response = "⚠️ AI không trả về nội dung. Bạn hãy thử lại."
-                    st.warning(ai_response)
+                    sb.warning(ai_response)
 
                 if sources:
                     source_text = "\n\n---\n🌐 **Nguồn tham khảo:**\n" + "\n".join(
                         f"- {src}" for src in sources
                     )
-                    st.markdown(source_text)
+                    sb.markdown(source_text)
                     ai_response += source_text
 
                 current_history.append({"role": "assistant", "content": ai_response})
@@ -819,18 +819,18 @@ with tab_ai:
                 if not uploaded_file and not sources:
                     new_embedding = get_embedding(user_input)
                     if new_embedding is not None:
-                        st.session_state[cache_key].append({
+                        sb.session_state[cache_key].append({
                             "embedding": new_embedding,
                             "question": user_input,
                             "answer": ai_response,
                             "created_at": time.time(),
                         })
-                        st.session_state[cache_key] = st.session_state[cache_key][-100:]
+                        sb.session_state[cache_key] = sb.session_state[cache_key][-100:]
 
             except Exception as exc:
                 error_text = safe_error_message(exc)
                 error_message = f"❌ Hệ thống AI gặp lỗi: {error_text}"
-                st.error(error_message)
+                sb.error(error_message)
                 if current_history and current_history[-1].get("role") == "user":
                     current_history.pop()
 
@@ -838,7 +838,7 @@ with tab_ai:
 # TAB 2: CHAT CỘNG ĐỒNG
 # ------------------------------------------------------------
 with tab_public:
-    st.caption("💬 Khung chat chung (Tự động xóa tin nhắn sau 10 phút; Tin nhắn tự động làm mới mỗi 3 giây).")
+    sb.caption("💬 Khung chat chung (Tự động xóa tin nhắn sau 10 phút; Tin nhắn tự động làm mới mỗi 3 giây).")
 
     st_autorefresh(interval=3000, key="public_chat_refresh")
 
@@ -848,9 +848,9 @@ with tab_public:
     except Exception:
         pass
 
-    with st.form("public_chat_form", clear_on_submit=True):
-        pub_msg = st.text_input("Viết tin nhắn gửi tới mọi người...", key="pub_input")
-        send_btn = st.form_submit_button("🚀 Gửi Tin Nhắn", type="primary")
+    with sb.form("public_chat_form", clear_on_submit=True):
+        pub_msg = sb.text_input("Viết tin nhắn gửi tới mọi người...", key="pub_input")
+        send_btn = sb.form_submit_button("🚀 Gửi Tin Nhắn", type="primary")
         if send_btn and pub_msg.strip():
             try:
                 supabase.table("public_messages").insert({
@@ -858,22 +858,22 @@ with tab_public:
                     "message": pub_msg.strip(),
                     "avatar_url": avatar_url,
                 }).execute()
-                st.rerun()
+                sb.rerun()
             except Exception as exc:
-                st.error(f"❌ Không gửi được tin nhắn: {safe_error_message(exc)}")
+                sb.error(f"❌ Không gửi được tin nhắn: {safe_error_message(exc)}")
 
-    if st.button("🗑️ Xóa toàn bộ cuộc trò chuyện của tôi", type="secondary"):
+    if sb.button("🗑️ Xóa toàn bộ cuộc trò chuyện của tôi", type="secondary"):
         try:
             res_all = supabase.table("public_messages").select("id").execute()
             if res_all.data:
                 for msg_item in res_all.data:
-                    st.session_state[hidden_public_msgs_key].add(msg_item.get("id"))
-            st.success("✅ Đã xóa sạch lịch sử chat phía giao diện của bạn.")
-            st.rerun()
+                    sb.session_state[hidden_public_msgs_key].add(msg_item.get("id"))
+            sb.success("✅ Đã xóa sạch lịch sử chat phía giao diện của bạn.")
+            sb.rerun()
         except Exception as exc:
-            st.error(f"❌ Không thể thực hiện: {safe_error_message(exc)}")
+            sb.error(f"❌ Không thể thực hiện: {safe_error_message(exc)}")
 
-    st.markdown("---")
+    sb.markdown("---")
     
     try:
         res_pub = (
@@ -887,22 +887,22 @@ with tab_public:
         
         visible_messages = [
             m for m in messages_list 
-            if m.get("id") not in st.session_state[hidden_public_msgs_key]
+            if m.get("id") not in sb.session_state[hidden_public_msgs_key]
         ]
 
         if not visible_messages:
-            st.info("Chưa có tin nhắn nào hoặc bạn đã xóa toàn bộ hiển thị.")
+            sb.info("Chưa có tin nhắn nào hoặc bạn đã xóa toàn bộ hiển thị.")
         else:
             for item in visible_messages:
                 msg_id = item.get("id")
                 msg_user = item.get("username")
                 time_str = item.get("created_at", "")[:16].replace("T", " ")
                 item_avatar = item.get("avatar_url") or DEFAULT_AVATAR
-                    msg_text = item.get("message")
+                msg_text = item.get("message")
 
-                col_msg, col_action = st.columns([6, 1])
+                col_msg, col_action = sb.columns([6, 1])
                 with col_msg:
-                    st.markdown(
+                    sb.markdown(
                         f"""
                         <div class="social-card" style="margin-bottom: 2px;">
                             <img src="{item_avatar}" class="user-avatar-img" />
@@ -917,19 +917,19 @@ with tab_public:
                     )
                 with col_action:
                     if msg_user == display_name:
-                        if st.button("Thu hồi", key=f"revoke_{msg_id}", help="Thu hồi tin nhắn này với mọi người"):
+                        if sb.button("Thu hồi", key=f"revoke_{msg_id}", help="Thu hồi tin nhắn này với mọi người"):
                             try:
                                 supabase.table("public_messages").delete().eq("id", msg_id).execute()
-                                st.rerun()
+                                sb.rerun()
                             except Exception as exc:
-                                st.error(f"Lỗi: {safe_error_message(exc)}")
+                                sb.error(f"Lỗi: {safe_error_message(exc)}")
                     else:
-                        if st.button("Ẩn", key=f"hide_{msg_id}", help="Ẩn tin nhắn này ở màn hình của bạn"):
-                            st.session_state[hidden_public_msgs_key].add(msg_id)
-                            st.rerun()
+                        if sb.button("Ẩn", key=f"hide_{msg_id}", help="Ẩn tin nhắn này ở màn hình của bạn"):
+                            sb.session_state[hidden_public_msgs_key].add(msg_id)
+                            sb.rerun()
 
     except Exception as exc:
-        st.error(f"❌ Lỗi tải tin nhắn cộng đồng: {safe_error_message(exc)}")
+        sb.error(f"❌ Lỗi tải tin nhắn cộng đồng: {safe_error_message(exc)}")
 
 # ------------------------------------------------------------
 # TAB 3: TIN NHẮN RIÊNG 1-1 (ZALO STYLE & KẾT BẠN)
@@ -971,21 +971,21 @@ with tab_dm:
                 sent_requests.append(r)
 
     # Giao diện Zalo Style: Chia thành 2 tab nhỏ (Trò chuyện & Danh bạ / Lời mời kết bạn)
-    sub_tab_chat, sub_tab_contacts = st.tabs(["💬 Trò Chuyện", "👥 Danh Bạ & Kết Bạn"])
+    sub_tab_chat, sub_tab_contacts = sb.tabs(["💬 Trò Chuyện", "👥 Danh Bạ & Kết Bạn"])
 
     with sub_tab_contacts:
-        st.markdown("#### 📥 Lời mời kết bạn chờ duyệt")
+        sb.markdown("#### 📥 Lời mời kết bạn chờ duyệt")
         if not pending_requests:
-            st.caption("Không có lời mời kết bạn nào đang chờ.")
+            sb.caption("Không có lời mời kết bạn nào đang chờ.")
         else:
             for req_id, sender_username in pending_requests:
                 sender_info = next((u for u in other_users if u["username"] == sender_username), {"display_name": sender_username, "avatar_url": DEFAULT_AVATAR})
                 s_name = sender_info.get("display_name") or sender_username
                 s_ava = sender_info.get("avatar_url") or DEFAULT_AVATAR
 
-                c1, c2, c3 = st.columns([3, 1, 1])
+                c1, c2, c3 = sb.columns([3, 1, 1])
                 with c1:
-                    st.markdown(
+                    sb.markdown(
                         f"""
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <img src="{s_ava}" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover;" />
@@ -995,25 +995,25 @@ with tab_dm:
                         unsafe_allow_html=True,
                     )
                 with c2:
-                    if st.button("Đồng ý", key=f"accept_{req_id}", type="primary", use_container_width=True):
+                    if sb.button("Đồng ý", key=f"accept_{req_id}", type="primary", use_container_width=True):
                         try:
                             supabase.table("friendships").update({"status": "accepted"}).eq("id", req_id).execute()
-                            st.success("✅ Đã chấp nhận kết bạn!")
-                            st.rerun()
+                            sb.success("✅ Đã chấp nhận kết bạn!")
+                            sb.rerun()
                         except Exception as exc:
-                            st.error(f"Lỗi: {safe_error_message(exc)}")
+                            sb.error(f"Lỗi: {safe_error_message(exc)}")
                 with c3:
-                    if st.button("Từ chối", key=f"reject_{req_id}", use_container_width=True):
+                    if sb.button("Từ chối", key=f"reject_{req_id}", use_container_width=True):
                         try:
                             supabase.table("friendships").delete().eq("id", req_id).execute()
-                            st.info("Đã từ chối lời mời.")
-                            st.rerun()
+                            sb.info("Đã từ chối lời mời.")
+                            sb.rerun()
                         except Exception as exc:
-                            st.error(f"Lỗi: {safe_error_message(exc)}")
+                            sb.error(f"Lỗi: {safe_error_message(exc)}")
 
-        st.markdown("---")
-        st.markdown("#### 🔍 Tìm kiếm người dùng & Kết bạn")
-        search_query = st.text_input("Nhập tên đăng nhập hoặc tên hiển thị để tìm kiếm:", key="search_user_input").strip()
+        sb.markdown("---")
+        sb.markdown("#### 🔍 Tìm kiếm người dùng & Kết bạn")
+        search_query = sb.text_input("Nhập tên đăng nhập hoặc tên hiển thị để tìm kiếm:", key="search_user_input").strip()
 
         if search_query:
             matched_users = [
@@ -1021,7 +1021,7 @@ with tab_dm:
                 if search_query.lower() in u["username"].lower() or search_query.lower() in u.get("display_name", "").lower()
             ]
             if not matched_users:
-                st.info("Không tìm thấy người dùng phù hợp.")
+                sb.info("Không tìm thấy người dùng phù hợp.")
             else:
                 for mu in matched_users:
                     mu_username = mu["username"]
@@ -1031,9 +1031,9 @@ with tab_dm:
                     is_friend = mu_username in friend_list
                     is_sent_pending = mu_username in sent_requests
 
-                    c_u1, c_u2 = st.columns([4, 2])
+                    c_u1, c_u2 = sb.columns([4, 2])
                     with c_u1:
-                        st.markdown(
+                        sb.markdown(
                             f"""
                             <div style="display: flex; align-items: center; gap: 10px; padding: 6px 0;">
                                 <img src="{mu_ava}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
@@ -1046,42 +1046,42 @@ with tab_dm:
                             unsafe_allow_html=True,
                         )
                     with c_u2:
-                        st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+                        sb.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
                         if is_friend:
-                            st.markdown("✅ **Đã là bạn bè**")
+                            sb.markdown("✅ **Đã là bạn bè**")
                         elif is_sent_pending:
-                            st.markdown("⏳ **Đã gửi lời mời**")
+                            sb.markdown("⏳ **Đã gửi lời mời**")
                         else:
-                            if st.button("➕ Kết bạn", key=f"add_friend_{mu_username}", type="primary"):
+                            if sb.button("➕ Kết bạn", key=f"add_friend_{mu_username}", type="primary"):
                                 try:
                                     supabase.table("friendships").insert({
                                         "sender": u_id,
                                         "receiver": mu_username,
                                         "status": "pending"
                                     }).execute()
-                                    st.success("Đã gửi lời mời kết bạn!")
-                                    st.rerun()
+                                    sb.success("Đã gửi lời mời kết bạn!")
+                                    sb.rerun()
                                 except Exception as exc:
-                                    st.error(f"Lỗi: {safe_error_message(exc)}")
+                                    sb.error(f"Lỗi: {safe_error_message(exc)}")
 
     with sub_tab_chat:
         if not friend_list:
-            st.info("📭 Danh sách bạn bè trống. Hãy sang tab **'Danh Bạ & Kết Bạn'** để tìm và kết bạn với người khác trước khi nhắn tin!")
+            sb.info("📭 Danh sách bạn bè trống. Hãy sang tab **'Danh Bạ & Kết Bạn'** để tìm và kết bạn với người khác trước khi nhắn tin!")
         else:
             friend_options = {
                 (next((u.get("display_name") or u["username"] for u in other_users if u["username"] == f), f)): f 
                 for f in friend_list
             }
-            selected_dname = st.selectbox("Chọn bạn bè để trò chuyện:", list(friend_options.keys()), key="select_friend_chat")
+            selected_dname = sb.selectbox("Chọn bạn bè để trò chuyện:", list(friend_options.keys()), key="select_friend_chat")
             selected_receiver = friend_options[selected_dname]
 
-            st.markdown("---")
+            sb.markdown("---")
 
             receiver_info = next((u for u in other_users if u["username"] == selected_receiver), {"display_name": selected_receiver, "avatar_url": DEFAULT_AVATAR})
             rec_dname = receiver_info.get("display_name") or selected_receiver
             rec_ava = receiver_info.get("avatar_url") or DEFAULT_AVATAR
 
-            st.markdown(
+            sb.markdown(
                 f"""
                 <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
                     <img src="{rec_ava}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #0068FF;" />
@@ -1096,7 +1096,7 @@ with tab_dm:
 
             st_autorefresh(interval=3000, key="zalo_dm_refresh")
 
-            chat_container = st.container(height=400)
+            chat_container = sb.container(height=400)
             with chat_container:
                 try:
                     res_dm = (
@@ -1115,7 +1115,7 @@ with tab_dm:
                     ]
 
                     if not dm_list:
-                    st.info(f"Chưa có tin nhắn nào với {rec_dname}. Hãy gửi lời chào đầu tiên!")
+                        sb.info(f"Chưa có tin nhắn nào với {rec_dname}. Hãy gửi lời chào đầu tiên!")
                     else:
                         for msg in dm_list:
                             m_sender = msg.get("sender")
@@ -1129,7 +1129,7 @@ with tab_dm:
                             text_color = "#FFFFFF" if is_me else "#050505"
                             align_text = "right" if is_me else "left"
 
-                            st.markdown(
+                            sb.markdown(
                                 f"""
                                 <div style="display: flex; flex-direction: {flex_dir}; gap: 8px; margin-bottom: 10px; align-items: flex-end;">
                                     <img src="{m_avatar}" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;" />
@@ -1144,19 +1144,19 @@ with tab_dm:
                                 unsafe_allow_html=True,
                             )
                 except Exception as exc:
-                    st.error(f"❌ Lỗi tải tin nhắn: {safe_error_message(exc)}")
+                    sb.error(f"❌ Lỗi tải tin nhắn: {safe_error_message(exc)}")
 
-            col_input, col_send = st.columns([5, 1])
+            col_input, col_send = sb.columns([5, 1])
             with col_input:
-                dm_input = st.text_input(
+                dm_input = sb.text_input(
                     "Nhập tin nhắn...", 
                     placeholder=f"Nhắn gì đó cho {rec_dname}...", 
                     label_visibility="collapsed", 
                     key=f"dm_input_text_{selected_receiver}"
                 )
             with col_send:
-                st.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
-                dm_send_btn = st.button("Gửi ➔", use_container_width=True, type="primary", key=f"dm_send_btn_{selected_receiver}")
+                sb.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
+                dm_send_btn = sb.button("Gửi ➔", use_container_width=True, type="primary", key=f"dm_send_btn_{selected_receiver}")
 
             if dm_send_btn and dm_input and dm_input.strip():
                 try:
@@ -1166,6 +1166,6 @@ with tab_dm:
                         "message": dm_input.strip(),
                         "avatar_url": avatar_url,
                     }).execute()
-                    st.rerun()
+                    sb.rerun()
                 except Exception as exc:
-                    st.error(f"❌ Không gửi được: {safe_error_message(exc)}")
+                    sb.error(f"❌ Không gửi được: {safe_error_message(exc)}")
