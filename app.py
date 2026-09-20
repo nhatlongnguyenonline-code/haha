@@ -166,7 +166,7 @@ if logged_in_user is None:
         if st.button("Đăng Nhập Khách", use_container_width=True, type="primary"):
             res = supabase.table("users").select("*").eq("username", lin_user).execute()
             if res.data and len(res.data) > 0:
-                user_data = res.data[0]
+                user_data = res.data
                 if bcrypt.checkpw(lin_pass.encode('utf-8'), user_data["password"].encode('utf-8')):
                     secure_token = secrets.token_urlsafe(16)
                     st.session_state.global_token_registry[secure_token] = lin_user
@@ -238,7 +238,7 @@ if cache_key not in st.session_state:
 current_page = st.session_state[active_page_key]
 
 user_info_res = supabase.table("users").select("display_name").eq("username", u_id).execute()
-display_name = user_info_res.data[0]["display_name"] if user_info_res.data else u_id
+display_name = user_info_res.data["display_name"] if user_info_res.data else u_id
 with st.sidebar:
     st.markdown(f"### 👤 TÀI KHOẢN: **{display_name.upper()}**")
     if f"rename_user_mode_{u_id}" not in st.session_state:
@@ -358,15 +358,23 @@ st.markdown(f"""
         <span class="premium-logo">🐦‍🔥</span>
         <span class="premium-text">TRỢ LÝ AI TOÀN NĂNG</span>
     </div>
-    <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6, Đám mây Supabase và Thẻ HTML Sinh ảnh Bất tử</div>
+    <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6, Đám mây Supabase và Khối kết xuất nhị phân chống vỡ ảnh</div>
 """, unsafe_allow_html=True)
 
-# Hiển thị lịch sử hội thoại thông minh (SỬA ĐỔI: Dùng st.image native để tránh lỗi chặn link bảo mật trình duyệt)
+# Hiển thị lịch sử hội thoại thông minh (Xử lý tải nhị phân an toàn cho lịch sử link ảnh để tránh bị vỡ)
 for message in st.session_state[pages_key][current_page]:
     avt_emoji = "👤" if message["role"] == "user" else "🐦‍🔥"
     with st.chat_message(message["role"], avatar=avt_emoji):
         if message["content"].startswith("http") and ("pollinations.ai" in message["content"] or "unsplash.com" in message["content"]):
-            st.image(message["content"], use_container_width=True)
+            try:
+                # Tải nhị phân an toàn cho phần lịch sử ảnh cũ
+                img_resp = requests.get(message["content"], timeout=10)
+                if img_resp.status_code == 200:
+                    st.image(img_resp.content, use_container_width=True)
+                else:
+                    st.caption("🔗 [Liên kết ảnh từ đám mây đã hết hạn hoặc đang bận]")
+            except:
+                st.caption("⚠️ [Không thể kết nối đến máy chủ lưu trữ hình ảnh lúc này]")
         else:
             st.markdown(message["content"])
 if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh hoặc yêu cầu vẽ tranh tại đây..."):
@@ -380,7 +388,7 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
     
     if is_image_request and not uploaded_file:
         with st.chat_message("assistant", avatar="🐦‍🔥"):
-            with st.status("🎨 Đang kích hoạt cổng siêu tốc và phác thảo bức tranh của bạn...", expanded=True) as status:
+            with st.status("🎨 Đang kết nối máy chủ nghệ thuật và tải dữ liệu ảnh nhị phân...", expanded=True) as status:
                 try:
                     translation_prompt = (
                         "Translate this image description into a high-quality, beautiful English prompt for AI art generation. "
@@ -398,17 +406,23 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                     
                     img_url = f"https://pollinations.ai{safe_prompt}?width=1024&height=1024&nologo=true&seed={random_seed}"
                     
-                    # SỬA ĐỔI: Sử dụng st.image trực tiếp tại đây để dựng ảnh tức thì không bị vỡ giao diện
-                    st.image(img_url, caption=f"🎨 Tác phẩm nghệ thuật vẽ theo yêu cầu: {user_input}", use_container_width=True)
+                    # CẢI TIẾN QUAN TRỌNG: Tải mảng bytes dữ liệu thực tế từ máy chủ thay vì đẩy link thô
+                    img_data_response = requests.get(img_url, timeout=25)
                     
-                    # Lưu link ảnh sạch vào phòng chat và đồng bộ trực tiếp lên Database Supabase đám mây
-                    st.session_state[pages_key][current_page].append({"role": "assistant", "content": img_url})
-                    upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
-                    status.update(label="🎨 Siêu lõi đã hoàn thành bức vẽ nghệ thuật xuất sắc!", state="complete")
+                    if img_data_response.status_code == 200 and len(img_data_response.content) > 1000:
+                        # Ép Streamlit dựng hình từ mảng nhị phân chuẩn (Không bao giờ vỡ ảnh)
+                        st.image(img_data_response.content, caption=f"🎨 Tác phẩm nghệ thuật vẽ theo yêu cầu: {user_input}", use_container_width=True)
+                        
+                        # Lưu link ảnh sạch vào phòng chat và đồng bộ trực tiếp lên Database Supabase đám mây
+                        st.session_state[pages_key][current_page].append({"role": "assistant", "content": img_url})
+                        upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
+                        status.update(label="🎨 Siêu lõi đã tải thành công bức vẽ nghệ thuật sắc nét!", state="complete")
+                    else:
+                        raise Exception("Dữ liệu ảnh trả về từ máy chủ không hợp lệ hoặc đang quá tải.")
                         
                 except Exception as img_err:
                     status.update(label="❌ Lỗi tạo ảnh!", state="error")
-                    st.markdown(f"Hệ thống không thể vẽ ảnh lúc này: {img_err}")
+                    st.markdown(f"Hệ thống không thể vẽ ảnh lúc này: {img_err}. Bạn vui lòng thử lại câu lệnh khác nhé!")
     else:
         # LUỒNG XỬ LÝ VĂN BẢN VÀ TRA CỨU WEB MẶC ĐỊNH
         cache_hit = False
