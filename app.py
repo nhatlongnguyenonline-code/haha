@@ -27,7 +27,7 @@ warnings.filterwarnings("ignore")
 st.set_page_config(
     page_title="Trợ Lý AI & Cộng Đồng",
     page_icon="🐦‍🔥",
-    layout="wide", # Sử dụng layout wide để không gian chat 2 cột rộng rãi hơn giống Zalo/Messenger
+    layout="wide",
 )
 
 AI_MODEL = st.secrets.get("GEMINI_MODEL", "gemini-3.6-flash")
@@ -967,27 +967,20 @@ with tab_dm:
     if not other_users:
         st.info("Chưa có thành viên nào khác trong hệ thống để nhắn tin.")
     else:
-        # Chia bố cục 2 cột giống Messenger/Zalo: Cột trái là danh sách đoạn chat, Cột phải là khung nội dung tin nhắn
         col_list, col_chat = st.columns([1, 2.8], gap="medium")
 
         with col_list:
             st.markdown("### 👥 Đoạn chat")
             
-            # Lưu trữ user đang chọn trò chuyện trong session_state
             if "active_dm_user" not in st.session_state:
                 st.session_state["active_dm_user"] = other_users[0]["username"]
 
-            # Hiển thị danh sách các user có thể click vào để chọn
             for user_obj in other_users:
                 u_username = user_obj["username"]
                 u_dname = user_obj.get("display_name") or u_username
-                u_ava = user_obj.get("avatar_url") or DEFAULT_AVATAR
                 
                 is_selected = (st.session_state["active_dm_user"] == u_username)
-                bg_highlight = "#E0F2FE" if is_selected else "#FFFFFF"
-                border_highlight = "#0284C7" if is_selected else "#E2E8F0"
 
-                # Nút chọn hội thoại
                 if st.button(f"  {u_dname}", key=f"select_user_{u_username}", use_container_width=True):
                     st.session_state["active_dm_user"] = u_username
                     st.rerun()
@@ -995,12 +988,10 @@ with tab_dm:
         with col_chat:
             selected_receiver = st.session_state.get("active_dm_user", other_users[0]["username"])
             
-            # Lấy thông tin hiển thị của người nhận hiện tại
             receiver_info = next((u for u in other_users if u["username"] == selected_receiver), {"display_name": selected_receiver, "avatar_url": DEFAULT_AVATAR})
             rec_dname = receiver_info.get("display_name") or selected_receiver
             rec_ava = receiver_info.get("avatar_url") or DEFAULT_AVATAR
 
-            # Header khung chat riêng
             st.markdown(
                 f"""
                 <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
@@ -1014,10 +1005,8 @@ with tab_dm:
                 unsafe_allow_html=True,
             )
 
-            # Tự động làm mới mỗi 3 giây để cập nhật tin nhắn mới từ người bên kia
             st_autorefresh(interval=3000, key="messenger_dm_refresh")
 
-            # Khu vực hiển thị tin nhắn (Scrollable / List)
             chat_container = st.container(height=420)
             with chat_container:
                 try:
@@ -1036,11 +1025,10 @@ with tab_dm:
                         for msg in dm_list:
                             m_sender = msg.get("sender")
                             m_text = msg.get("message")
-                            m_time = msg.get("created_at", "")[11:16] # Chỉ lấy giờ:phút cho gọn giống messenger
+                            m_time = msg.get("created_at", "")[11:16]
                             m_avatar = msg.get("avatar_url") or DEFAULT_AVATAR
 
                             is_me = (m_sender == u_id)
-                            # Giao diện bong bóng chat phong cách Messenger: Mình ở phải (xanh), Người kia ở trái (trắng)
                             flex_dir = "row-reverse" if is_me else "row"
                             bg_bubble = "#0084FF" if is_me else "#E4E6EB"
                             text_color = "#FFFFFF" if is_me else "#050505"
@@ -1063,7 +1051,6 @@ with tab_dm:
                 except Exception as exc:
                     st.error(f"❌ Lỗi tải tin nhắn: {safe_error_message(exc)}")
 
-            # Form nhập và gửi tin nhắn ở đáy khung chat
             with st.form(f"messenger_form_{selected_receiver}", clear_on_submit=True):
                 col_input, col_send = st.columns([5, 1])
                 with col_input:
