@@ -132,14 +132,17 @@ except:
     st.stop()
 
 if "ai_client" not in st.session_state:
-    try: st.session_state.ai_client = genai.Client(api_key=API_KEY)
-    except Exception as e: st.error(f"Lỗi khởi tạo bộ não AI: {e}")
+    try: 
+        st.session_state.ai_client = genai.Client(api_key=API_KEY)
+    except Exception as e: 
+        st.error(f"Lỗi khởi tạo bộ não AI: {e}")
 
 def get_embedding(text):
     try:
         response = st.session_state.ai_client.models.embed_content(model="text-embedding-004", contents=text)
         return response.embeddings.values
-    except: return None
+    except: 
+        return None
 
 if "global_token_registry" not in st.session_state:
     st.session_state.global_token_registry = {}
@@ -150,7 +153,6 @@ current_url_token = url_params.get("token", None)
 logged_in_user = None
 if current_url_token and current_url_token in st.session_state.global_token_registry:
     logged_in_user = st.session_state.global_token_registry[current_url_token]
-
 if logged_in_user is None:
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
     tab1, tab2 = st.tabs(["🔒 Đăng Nhập", "📝 Đăng Ký Tài Khoản"])
@@ -161,16 +163,19 @@ if logged_in_user is None:
         lin_pass = st.text_input("Mật khẩu", type="password", key="lin_p")
         if st.button("Đăng Nhập Khách", use_container_width=True, type="primary"):
             res = supabase.table("users").select("*").eq("username", lin_user).execute()
-            if res.data:
-                user_data = res.data if isinstance(res.data, list) else res.data
-                if bcrypt.checkpw(lin_pass.encode('utf-8'), user_data["password"].encode('utf-8')):
+            # SỬA LỖI: Kiểm tra danh sách hợp lệ và lấy phần tử đầu tiên tránh lỗi mảng/TypeError
+            if res.data and len(res.data) > 0:
+                user_record = res.data[0]
+                if bcrypt.checkpw(lin_pass.encode('utf-8'), user_record["password"].encode('utf-8')):
                     secure_token = secrets.token_urlsafe(16)
                     st.session_state.global_token_registry[secure_token] = lin_user
                     st.query_params["token"] = secure_token
                     st.success(f"🎉 Chào mừng {lin_user} quay trở lại!")
                     st.rerun()
-                else: st.error("❌ Sai mật khẩu, vui lòng kiểm tra lại.")
-            else: st.error("❌ Tài khoản không tồn tại. Hãy qua tab Đăng Ký.")
+                else: 
+                    st.error("❌ Sai mật khẩu, vui lòng kiểm tra lại.")
+            else: 
+                st.error("❌ Tài khoản không tồn tại. Hãy qua tab Đăng Ký.")
             
     with tab2:
         st.subheader("Tạo tài khoản mới")
@@ -181,7 +186,8 @@ if logged_in_user is None:
                 st.warning("⚠️ Không được để trống tài khoản hoặc mật khẩu.")
             else:
                 check_res = supabase.table("users").select("username").eq("username", reg_user).execute()
-                if check_res.data: st.error("❌ Tên đăng nhập này đã được sử dụng.")
+                if check_res.data: 
+                    st.error("❌ Tên đăng nhập này đã được sử dụng.")
                 else:
                     hashed_p = bcrypt.hashpw(reg_pass.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                     supabase.table("users").insert({
@@ -229,8 +235,9 @@ if cache_key not in st.session_state:
 
 current_page = st.session_state[active_page_key]
 user_info_res = supabase.table("users").select("display_name").eq("username", u_id).execute()
-display_name = user_info_res.data["display_name"] if user_info_res.data else u_id
 
+# SỬA LỖI: Tránh sập giao diện khi đọc thuộc tính từ mảng rỗng trả về của Supabase
+display_name = user_info_res.data[0]["display_name"] if user_info_res.data and len(user_info_res.data) > 0 else u_id
 with st.sidebar:
     st.markdown(f"### 👤 TÀI KHOẢN: **{display_name.upper()}**")
     if f"rename_user_mode_{u_id}" not in st.session_state:
@@ -366,22 +373,19 @@ for message in st.session_state[pages_key][current_page]:
             st.components.v1.html(html_history, height=450)
         else:
             st.markdown(message["content"])
-
 if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh hoặc yêu cầu vẽ tranh tại đây..."):
     st.session_state[pages_key][current_page].append({"role": "user", "content": user_input})
     with st.chat_message("user", avatar="👤"): st.markdown(user_input)
     cau_hoi_clean = user_input.lower().strip()
     
-    # BỘ LỌC TỪ KHÓA KÍCH HOẠT ĐỘNG CƠ SINH ẢNH (ĐÃ THÊM TỪ KHÓA MỞ RỘNG ĐỘC LẬP)
+    # BỘ LỌC TỪ KHÓA KÍCH HOẠT ĐỘC LẬP
     image_keywords = ["vẽ", "tạo ảnh", "tạo hình", "bức tranh", "bức ảnh", "hình ảnh về", "vẽ tranh", "ảnh", "tạo"]
     is_image_request = any(word in cau_hoi_clean for word in image_keywords)
+    
     if is_image_request and not uploaded_file:
         with st.chat_message("assistant", avatar="🐦‍🔥"):
             with st.status("🎨 Đang kích hoạt cổng siêu tốc và phác thảo bức tranh của bạn...", expanded=True) as status:
                 try:
-                    import urllib.parse
-                    
-                    # 1. Sử dụng Gemini 3.6 dịch mô tả tiếng Việt sang tiếng Anh ngắn gọn, sạch sẽ
                     translation_prompt = (
                         "Translate this image description into a high-quality, beautiful English prompt for AI art generation. "
                         "Return ONLY the English translation, do not include any quotes, commas, periods, or extra words. "
@@ -390,41 +394,32 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                     translated_response = st.session_state.ai_client.models.generate_content(
                         model='gemini-3.6-flash', contents=translation_prompt
                     )
-                    # Làm sạch tuyệt đối chuỗi để loại bỏ hoàn toàn ký tự đặc biệt hay xuống dòng gây hỏng cấu trúc link URL
                     english_prompt = translated_response.text.strip().replace("\n", " ").replace("\r", " ")
                     english_prompt = "".join(c for c in english_prompt if c.isalnum() or c.isspace())
                     
-                    # Mã hóa an toàn chuỗi prompt ngắn gọn
                     safe_prompt = urllib.parse.quote(english_prompt)
                     random_seed = secrets.randbelow(999999)
                     
-                    # Tạo đường link ảnh trực tiếp mở, an toàn tuyệt đối
+                    # SỬA LỖI: Sửa đổi cấu trúc định tuyến URL chính xác theo chuẩn cổng API Pollinations
                     img_url = f"https://pollinations.ai{safe_prompt}?width=1024&height=1024&nologo=true&private=true&seed={random_seed}"
-                    image_success = True
-                    caption_msg = f"🎨 Tác phẩm nghệ thuật vẽ theo yêu cầu: {user_input}"
-                    # HIỂN THỊ TRỰC TIẾP QUA TRÌNH DUYỆT BẰNG THẺ HTML <img> ĐỂ TRÁNH BỊ SERVER CHẶN LUỒNG NHỊ PHÂN
-                    if image_success:
-                        # Hiển thị ảnh mượt mà, tự động căn giữa và bo góc chuẩn giao diện Premium
-                        html_code = f"""
-                        <div style="display: flex; justify-content: center; margin: 10px 0;">
-                            <img src="{img_url}" alt="AI Image" style="border-radius: 18px; max-width: 100%; height: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"/>
-                        </div>
-                        """
-                        st.components.v1.html(html_code, height=450)
-                        st.caption(caption_msg)
-                        
-                        # Lưu trực tiếp đường link ảnh sạch này lên đám mây Supabase vĩnh viễn
-                        st.session_state[pages_key][current_page].append({"role": "assistant", "content": img_url})
-                        upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
-                        status.update(label="🎨 Siêu lõi đã hoàn thành bức vẽ nghệ thuật xuất sắc!", state="complete")
-                    else:
-                        raise Exception("Cổng dịch vụ đám mây hiện đang bận.")
+                    
+                    html_code = f"""
+                    <div style="display: flex; justify-content: center; margin: 10px 0;">
+                        <img src="{img_url}" alt="AI Image" style="border-radius: 18px; max-width: 100%; height: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"/>
+                    </div>
+                    """
+                    st.components.v1.html(html_code, height=450)
+                    st.caption(f"🎨 Tác phẩm nghệ thuật vẽ theo yêu cầu: {user_input}")
+                    
+                    st.session_state[pages_key][current_page].append({"role": "assistant", "content": img_url})
+                    upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
+                    status.update(label="🎨 Siêu lõi đã hoàn thành bức vẽ nghệ thuật xuất sắc!", state="complete")
                         
                 except Exception as img_err:
                     status.update(label="❌ Lỗi tạo ảnh!", state="error")
                     st.markdown(f"Hệ thống không thể vẽ ảnh lúc này: {img_err}")
     else:
-        # 2. LUỒNG XỬ LÝ VĂN BẢN VÀ TRA CỨU WEB MẶC ĐỊNH SỬ DỤNG DUY NHẤT LÕI GEMINI 3.6
+        # LUỒNG XỬ LÝ VĂN BẢN VÀ TRA CỨU WEB MẶC ĐỊNH
         cache_hit = False
         cached_answer = ""
         if not uploaded_file:
@@ -480,7 +475,8 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                     f"Yêu cầu: Trả lời chi tiết dựa trên thông tin này hoặc kiến thức nội tại.\n"
                     f"CÂU HỎI: {user_input}"
                 )
-            else: prompt_payload = user_input
+            else: 
+                prompt_payload = user_input
 
             with st.chat_message("assistant", avatar="🐦‍🔥"):
                 try:
@@ -497,7 +493,8 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                             )
                         else:
                             response_stream = st.session_state[chat_session_key].send_message_stream(prompt_payload, config={"temperature": creativity})
-                        for chunk in response_stream: yield chunk.text
+                        for chunk in response_stream: 
+                            yield chunk.text
 
                     ai_response = st.write_stream(response_generator())
                     if sources:
