@@ -361,17 +361,12 @@ st.markdown(f"""
     <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6, Đám mây Supabase và Thẻ HTML Sinh ảnh Bất tử</div>
 """, unsafe_allow_html=True)
 
-# Hiển thị lịch sử hội thoại thông minh (Cập nhật bộ lọc nhận diện endpoint image.pollinations.ai chuẩn xác)
+# Hiển thị lịch sử hội thoại thông minh (SỬA ĐỔI: Dùng st.image native để tránh lỗi chặn link bảo mật trình duyệt)
 for message in st.session_state[pages_key][current_page]:
     avt_emoji = "👤" if message["role"] == "user" else "🐦‍🔥"
     with st.chat_message(message["role"], avatar=avt_emoji):
         if message["content"].startswith("http") and ("pollinations.ai" in message["content"] or "unsplash.com" in message["content"]):
-            html_history = f"""
-            <div style="display: flex; justify-content: center; margin: 10px 0;">
-                <img src="{message['content']}" style="border-radius: 18px; max-width: 100%; height: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"/>
-            </div>
-            """
-            st.components.v1.html(html_history, height=450)
+            st.image(message["content"], use_container_width=True)
         else:
             st.markdown(message["content"])
 if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh hoặc yêu cầu vẽ tranh tại đây..."):
@@ -401,16 +396,10 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                     safe_prompt = urllib.parse.quote(english_prompt)
                     random_seed = secrets.randbelow(999999)
                     
-                    # CẬP NHẬT SỬA LỖI: Chuyển đổi sang endpoint image.pollinations.ai/prompt/ chạy mượt mà không bao giờ lỗi đường dẫn
                     img_url = f"https://pollinations.ai{safe_prompt}?width=1024&height=1024&nologo=true&seed={random_seed}"
                     
-                    html_code = f"""
-                    <div style="display: flex; justify-content: center; margin: 10px 0;">
-                        <img src="{img_url}" alt="AI Image" style="border-radius: 18px; max-width: 100%; height: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"/>
-                    </div>
-                    """
-                    st.components.v1.html(html_code, height=450)
-                    st.caption(f"🎨 Tác phẩm nghệ thuật vẽ theo yêu cầu: {user_input}")
+                    # SỬA ĐỔI: Sử dụng st.image trực tiếp tại đây để dựng ảnh tức thì không bị vỡ giao diện
+                    st.image(img_url, caption=f"🎨 Tác phẩm nghệ thuật vẽ theo yêu cầu: {user_input}", use_container_width=True)
                     
                     # Lưu link ảnh sạch vào phòng chat và đồng bộ trực tiếp lên Database Supabase đám mây
                     st.session_state[pages_key][current_page].append({"role": "assistant", "content": img_url})
