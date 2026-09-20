@@ -759,7 +759,7 @@ with tab_ai:
             prompt_payload = (
                 "Bạn là Trợ lý AI Toàn năng. Hãy trả lời bằng tiếng Việt nếu người dùng hỏi bằng tiếng Việt. "
                 "Dữ liệu web bên dưới chỉ là nguồn tham khảo; không được tự bịa thông tin không có trong dữ liệu hoặc kiến thức của bạn. "
-                "Nếu nguồn mâu thuẫn hoặc không đủ chắc chắn, hãy nói rõ điều đó.\n\n"
+                "Если nguồn mâu thuẫn hoặc không đủ chắc chắn, hãy nói rõ điều đó.\n\n"
                 f"DỮ LIỆU WEB:\n{combined_context}\n\n"
                 f"CÂU HỎI:\n{user_input}"
             )
@@ -1143,33 +1143,40 @@ with tab_dm:
                 except Exception as exc:
                     sb.error(f"❌ Lỗi tải tin nhắn: {safe_error_message(exc)}")
 
-            # Form nhập tin nhắn kết hợp nút Làm mới & nút Gửi chống spam
+            # Quản lý state input riêng tư chống spam
+            input_key = f"widget_dm_input_{selected_receiver}"
+            if input_key not in sb.session_state:
+                sb.session_state[input_key] = ""
+
+            def submit_dm_action():
+                val = sb.session_state.get(input_key, "").strip()
+                if val:
+                    try:
+                        supabase.table("private_messages").insert({
+                            "sender": u_id,
+                            "receiver": selected_receiver,
+                            "message": val,
+                            "avatar_url": avatar_url,
+                        }).execute()
+                        sb.session_state[input_key] = ""
+                    except Exception as exc:
+                        sb.error(f"❌ Không gửi được: {safe_error_message(exc)}")
+
             with sb.form(key=f"dm_form_{selected_receiver}", clear_on_submit=True):
                 col_input, col_refresh, col_send = sb.columns([4, 1, 1])
                 with col_input:
-                    dm_input = sb.text_input(
+                    sb.text_input(
                         "Nhập tin nhắn...", 
                         placeholder=f"Nhắn gì đó cho {rec_dname}...", 
-                        label_visibility="collapsed"
+                        label_visibility="collapsed",
+                        key=input_key
                     )
                 with col_refresh:
                     sb.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
                     refresh_btn = sb.form_submit_button("🔄 Tải lại", use_container_width=True)
                 with col_send:
                     sb.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
-                    dm_send_btn = sb.form_submit_button("Gửi ➔", use_container_width=True, type="primary")
+                    dm_send_btn = sb.form_submit_button("Gửi ➔", use_container_width=True, type="primary", on_click=submit_dm_action)
 
                 if refresh_btn:
                     sb.rerun()
-
-                if dm_send_btn and dm_input and dm_input.strip():
-                    try:
-                        supabase.table("private_messages").insert({
-                            "sender": u_id,
-                            "receiver": selected_receiver,
-                            "message": dm_input.strip(),
-                            "avatar_url": avatar_url,
-                        }).execute()
-                        sb.rerun()
-                    except Exception as exc:
-                        sb.error(f"❌ Không gửi được: {safe_error_message(exc)}")
