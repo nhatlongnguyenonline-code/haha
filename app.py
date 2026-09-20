@@ -6,11 +6,8 @@ import httpx
 import time
 import json
 import bcrypt
-import secrets  
+import secrets  # Thêm thư viện mã hóa sinh Token bảo mật ngẫu nhiên
 import numpy as np
-import io
-import base64
-import urllib.parse
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 from google import genai
@@ -23,8 +20,11 @@ warnings.filterwarnings("ignore")
 
 #--- CẤU HÌNH GIAO DIỆN PREMIUM LIGHT MODE SẠCH SẼ (XÓA GRADIENT HAI BÊN) ---
 st.set_page_config(page_title="Trợ Lý AI Toàn Năng", page_icon="🐦‍🔥", layout="centered")
+
 st.markdown("""
     <style>
+    /* XÓA HOÀN TOÀN THANH GRADIENT HAI BÊN KHỎI .stApp::before VÀ .stApp::after */
+    
     [data-testid="stSidebar"] { 
         background: linear-gradient(180deg, #F8FAFC 0%, #FFF7ED 100%) !important; 
         border-right: 1px solid #FED7AA !important; 
@@ -72,9 +72,12 @@ st.markdown("""
         color: white !important; 
         border-radius: 50% !important; 
     }
+    
+    /* SỬA LỖI: Chỉ ẩn icon SVG mặc định của Streamlit, khôi phục chữ tiêu đề rõ ràng */
     [data-testid="stHeaderHeading"] svg, [data-testid="stElementContainer"] h1 svg { 
         display: none !important; 
     }
+    
     [data-testid="stChatMessageAvatar"] { 
         border-radius: 50% !important; 
         display: flex !important; 
@@ -131,21 +134,14 @@ except:
     st.stop()
 
 if "ai_client" not in st.session_state:
-    try: 
-        # SỬA LỖI: Thêm http_options chứa api-key vào header nhằm ép SDK chạy đúng cổng Google AI Studio toàn diện
-        st.session_state.ai_client = genai.Client(
-            api_key=API_KEY, 
-            http_options={'headers': {'x-goog-api-key': API_KEY}}
-        )
-    except Exception as e: 
-        st.error(f"Lỗi khởi tạo bộ não AI: {e}")
+    try: st.session_state.ai_client = genai.Client(api_key=API_KEY)
+    except Exception as e: st.error(f"Lỗi khởi tạo bộ não AI: {e}")
 
 def get_embedding(text):
     try:
         response = st.session_state.ai_client.models.embed_content(model="text-embedding-004", contents=text)
         return response.embeddings.values
-    except: 
-        return None
+    except: return None
 
 if "global_token_registry" not in st.session_state:
     st.session_state.global_token_registry = {}
@@ -156,6 +152,8 @@ current_url_token = url_params.get("token", None)
 logged_in_user = None
 if current_url_token and current_url_token in st.session_state.global_token_registry:
     logged_in_user = st.session_state.global_token_registry[current_url_token]
+
+# Giao diện Đăng nhập / Đăng ký tương tác Supabase thời gian thực
 if logged_in_user is None:
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
     tab1, tab2 = st.tabs(["🔒 Đăng Nhập", "📝 Đăng Ký Tài Khoản"])
@@ -166,7 +164,7 @@ if logged_in_user is None:
         lin_pass = st.text_input("Mật khẩu", type="password", key="lin_p")
         if st.button("Đăng Nhập Khách", use_container_width=True, type="primary"):
             res = supabase.table("users").select("*").eq("username", lin_user).execute()
-            if res.data and len(res.data) > 0:
+            if res.data:
                 user_data = res.data[0]
                 if bcrypt.checkpw(lin_pass.encode('utf-8'), user_data["password"].encode('utf-8')):
                     secure_token = secrets.token_urlsafe(16)
@@ -174,10 +172,8 @@ if logged_in_user is None:
                     st.query_params["token"] = secure_token
                     st.success(f"🎉 Chào mừng {lin_user} quay trở lại!")
                     st.rerun()
-                else: 
-                    st.error("❌ Sai mật khẩu, vui lòng kiểm tra lại.")
-            else: 
-                st.error("❌ Tài khoản không tồn tại. Hãy qua tab Đăng Ký.")
+                else: st.error("❌ Sai mật khẩu, vui lòng kiểm tra lại.")
+            else: st.error("❌ Tài khoản không tồn tại. Hãy qua tab Đăng Ký.")
             
     with tab2:
         st.subheader("Tạo tài khoản mới")
@@ -188,8 +184,7 @@ if logged_in_user is None:
                 st.warning("⚠️ Không được để trống tài khoản hoặc mật khẩu.")
             else:
                 check_res = supabase.table("users").select("username").eq("username", reg_user).execute()
-                if check_res.data: 
-                    st.error("❌ Tên đăng nhập này đã được sử dụng.")
+                if check_res.data: st.error("❌ Tên đăng nhập này đã được sử dụng.")
                 else:
                     hashed_p = bcrypt.hashpw(reg_pass.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                     supabase.table("users").insert({
@@ -204,6 +199,7 @@ pages_key = f"chat_pages_{u_id}"
 active_page_key = f"active_page_{u_id}" 
 cache_key = f"cache_{u_id}"
 
+# Hàm tải toàn bộ danh sách phòng chat của user từ Supabase đám mây về
 def download_supabase_history(username):
     pages = {}
     res = supabase.table("chat_histories").select("*").eq("username", username).execute()
@@ -212,11 +208,13 @@ def download_supabase_history(username):
             pages[row["page_name"]] = row["history_data"]
     return pages
 
+# Hàm lưu/cập nhật 1 phòng chat cụ thể lên Supabase đám mây
 def upload_single_page_supabase(username, page_name, data_list):
     supabase.table("chat_histories").upsert({
         "username": username, "page_name": page_name, "history_data": data_list
     }).execute()
 
+# --- LOGIC TỰ ĐỘNG TẢI/TẠO PHÒNG CHAT ĐỒNG BỘ VỚI ĐÁM MÂY ---
 if pages_key not in st.session_state:
     db_pages = download_supabase_history(u_id)
     if db_pages:
@@ -239,9 +237,11 @@ if cache_key not in st.session_state:
 current_page = st.session_state[active_page_key]
 
 user_info_res = supabase.table("users").select("display_name").eq("username", u_id).execute()
-display_name = user_info_res.data[0]["display_name"] if user_info_res.data and len(user_info_res.data) > 0 else u_id
+display_name = user_info_res.data[0]["display_name"] if user_info_res.data else u_id
+
 with st.sidebar:
     st.markdown(f"### 👤 TÀI KHOẢN: **{display_name.upper()}**")
+    
     if f"rename_user_mode_{u_id}" not in st.session_state:
         st.session_state[f"rename_user_mode_{u_id}"] = False
         
@@ -301,6 +301,7 @@ with st.sidebar:
                 if new_title != "" and new_title != current_page:
                     supabase.table("chat_histories").delete().eq("username", u_id).eq("page_name", current_page).execute()
                     upload_single_page_supabase(u_id, new_title, st.session_state[pages_key][current_page])
+                    
                     st.session_state[pages_key][new_title] = st.session_state[pages_key].pop(current_page)
                     st.session_state[active_page_key] = new_title
                 st.session_state[f"rename_mode_{u_id}"] = False
@@ -354,163 +355,116 @@ def extract_web_content(url):
     except: pass
     return ""
 
+# HIỂN THỊ TIÊU ĐỀ THƯƠNG HIỆU LỚN KHÔNG BỊ KHUẤT CHỮ TRÊN TRANG CHÍNH CHUẨN ICON 🐦‍🔥
 st.markdown(f"""
     <div class="premium-title-container">
         <span class="premium-logo">🐦‍🔥</span>
         <span class="premium-text">TRỢ LÝ AI TOÀN NĂNG</span>
     </div>
-    <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6, Đám mây Supabase và Thẻ HTML Sinh ảnh Bất tử</div>
+    <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6 và Đám mây Supabase an toàn 100%</div>
 """, unsafe_allow_html=True)
 
-# Hiển thị lịch sử hội thoại (Xử lý thông minh nếu dữ liệu tin nhắn lưu là đường link ảnh URL trực tiếp)
+# Hiển thị lịch sử hội thoại của trang đang chọn
 for message in st.session_state[pages_key][current_page]:
     avt_emoji = "👤" if message["role"] == "user" else "🐦‍🔥"
-    with st.chat_message(message["role"], avatar=avt_emoji):
-        if message["content"].startswith("http") and ("pollinations.ai" in message["content"] or "unsplash.com" in message["content"]):
-            html_history = f"""
-            <div style="display: flex; justify-content: center; margin: 10px 0;">
-                <img src="{message['content']}" style="border-radius: 18px; max-width: 100%; height: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"/>
-            </div>
-            """
-            st.components.v1.html(html_history, height=450)
-        else:
-            st.markdown(message["content"])
-if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh hoặc yêu cầu vẽ tranh tại đây..."):
+    with st.chat_message(message["role"], avatar=avt_emoji): st.markdown(message["content"])
+
+if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
     st.session_state[pages_key][current_page].append({"role": "user", "content": user_input})
     with st.chat_message("user", avatar="👤"): st.markdown(user_input)
-    cau_hoi_clean = user_input.lower().strip()
+
+    cache_hit = False
+    cached_answer = ""
     
-    # BỘ LỌC TỪ KHÓA KÍCH HOẠT ĐỘC LẬP TẠO ẢNH
-    image_keywords = ["vẽ", "tạo ảnh", "tạo hình", "bức tranh", "bức ảnh", "hình ảnh về", "vẽ tranh", "ảnh", "tạo"]
-    is_image_request = any(word in cau_hoi_clean for word in image_keywords)
-    
-    if is_image_request and not uploaded_file:
+    if not uploaded_file:
+        current_embedding = get_embedding(user_input)
+        if current_embedding is not None:
+            best_score = -1
+            best_match = None
+            for item in st.session_state[cache_key]:
+                dot_product = np.dot(current_embedding, item["embedding"])
+                norm_a = np.linalg.norm(current_embedding)
+                norm_b = np.linalg.norm(item["embedding"])
+                similarity = dot_product / (norm_a * norm_b)
+                if similarity > best_score:
+                    best_score = similarity
+                    best_match = item
+            if best_score >= 0.85 and best_match is not None:
+                cache_hit = True
+                cached_answer = best_match["answer"]
+
+    if cache_hit:
         with st.chat_message("assistant", avatar="🐦‍🔥"):
-            with st.status("🎨 Đang kích hoạt cổng siêu tốc và phác thảo bức tranh của bạn...", expanded=True) as status:
-                try:
-                    translation_prompt = (
-                        "Translate this image description into a high-quality, beautiful English prompt for AI art generation. "
-                        "Return ONLY the English translation, do not include any quotes, commas, periods, or extra words. "
-                        f"Keep it under 30 words and very clean: {user_input}"
-                    )
-                    translated_response = st.session_state.ai_client.models.generate_content(
-                        model='gemini-3.6-flash', contents=translation_prompt
-                    )
-                    english_prompt = translated_response.text.strip().replace("\n", " ").replace("\r", " ")
-                    english_prompt = "".join(c for c in english_prompt if c.isalnum() or c.isspace())
-                    
-                    safe_prompt = urllib.parse.quote(english_prompt)
-                    random_seed = secrets.randbelow(999999)
-                    
-                    img_url = f"https://pollinations.ai{safe_prompt}?width=1024&height=1024&nologo=true&private=true&seed={random_seed}"
-                    
-                    html_code = f"""
-                    <div style="display: flex; justify-content: center; margin: 10px 0;">
-                        <img src="{img_url}" alt="AI Image" style="border-radius: 18px; max-width: 100%; height: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"/>
-                    </div>
-                    """
-                    st.components.v1.html(html_code, height=450)
-                    st.caption(f"🎨 Tác phẩm nghệ thuật vẽ theo yêu cầu: {user_input}")
-                    
-                    st.session_state[pages_key][current_page].append({"role": "assistant", "content": img_url})
-                    upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
-                    status.update(label="🎨 Siêu lõi đã hoàn thành bức vẽ nghệ thuật xuất sắc!", state="complete")
-                        
-                except Exception as img_err:
-                    status.update(label="❌ Lỗi tạo ảnh!", state="error")
-                    st.markdown(f"Hệ thống không thể vẽ ảnh lúc này: {img_err}")
+            st.markdown(cached_answer)
+            st.caption(f"⚡ *Phản hồi từ cache của {current_page}*")
+            st.session_state[pages_key][current_page].append({"role": "assistant", "content": cached_answer})
+            upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
     else:
-        # LUỒNG XỬ LÝ VĂN BẢN VÀ TRA CỨU WEB MẶC ĐỊNH
-        cache_hit = False
-        cached_answer = ""
-        if not uploaded_file:
-            current_embedding = get_embedding(user_input)
-            if current_embedding is not None:
-                best_score = -1
-                best_match = None
-                for item in st.session_state[cache_key]:
-                    dot_product = np.dot(current_embedding, item["embedding"])
-                    norm_a = np.linalg.norm(current_embedding)
-                    norm_b = np.linalg.norm(item["embedding"])
-                    similarity = dot_product / (norm_a * norm_b)
-                    if similarity > best_score:
-                        best_score = similarity
-                        best_match = item
-                if best_score >= 0.85 and best_match is not None:
-                    cache_hit = True
-                    cached_answer = best_match["answer"]
+        cau_hoi_clean = user_input.lower().strip()
+        keywords = [
+            "ở đâu", "thành phố", "giá", "thời tiết", "mấy độ", "bao nhiêu", "hôm nay", "tin tức", "ai là", "sự kiện", "trường thcs", "là gì", "dịch", "nghĩa là gì",
+            "mới nhất", "vừa qua", "hiện tại", "năm nay", "tuần này", "tháng này", "vừa mới", "gần đây", "ngày mai", "hôm qua",
+            "giá vàng", "xăng dầu", "cổ phiếu", "tỷ giá", "usd", "bitcoin", "crypto", "thị trường",
+            "tỷ số", "trận đấu", "bóng đá", "ngoại hạng anh", "champions league", "kết quả", "lịch thi đấu", "drama", "scandal", "showbiz",
+            "bản cập nhật", "vừa ra mắt", "ios", "android", "review", "đập hộp", "mở bán", "update", "thông số", "mô hình"
+        ]
+        need_web = any(word in cau_hoi_clean for word in keywords)
 
-        if cache_hit:
-            with st.chat_message("assistant", avatar="🐦‍🔥"):
-                st.markdown(cached_answer)
-                st.caption(f"⚡ *Phản hồi từ cache của {current_page}*")
-                st.session_state[pages_key][current_page].append({"role": "assistant", "content": cached_answer})
+        combined_context = ""
+        sources = []
+        
+        if need_web and not uploaded_file:
+            with st.status("🔍 Đang tra cứu thông tin thực tế rộng...", expanded=False) as status:
+                web_links = search_the_web_ddg(user_input)
+                if web_links:
+                    for link in web_links:
+                        content = extract_web_content(link)
+                        if content:
+                            combined_context += f"\n--- Nguồn tham khảo: {link} ---\n{content}\n"
+                            sources.append(link)
+                    status.update(label=" Đọc dữ liệu thành công!", state="complete")
+
+        if combined_context:
+            prompt_payload = (
+                f"Bạn là Trợ lý AI Toàn năng. Dưới đây là thông tin cập nhật từ Internet để tham khảo:\n"
+                f"{combined_context}\n\n"
+                f"Yêu cầu: Trả lời chi tiết dựa trên thông tin này hoặc kiến thức nội tại.\n"
+                f"CÂU HỎI: {user_input}"
+            )
+        else: prompt_payload = user_input
+
+        with st.chat_message("assistant", avatar="🐦‍🔥"):
+            try:
+                chat_session_key = f"ai_session_{u_id}_{current_page}"
+                if chat_session_key not in st.session_state:
+                    st.session_state[chat_session_key] = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
+
+                def response_generator():
+                    if uploaded_file:
+                        response_stream = st.session_state.ai_client.models.generate_content_stream(
+                            model='gemini-3.6-flash',
+                            contents=[Image.open(uploaded_file), prompt_payload],
+                            config=types.GenerateContentConfig(temperature=creativity)
+                        )
+                    else:
+                        response_stream = st.session_state[chat_session_key].send_message_stream(prompt_payload, config={"temperature": creativity})
+                    for chunk in response_stream: yield chunk.text
+
+                ai_response = st.write_stream(response_generator())
+                
+                if sources:
+                    source_text = "\n\n---\n🌐 **Nguồn liên kết tham cứu:**\n" + "\n".join([f"- {src}" for src in sources])
+                    st.markdown(source_text)
+                    ai_response += source_text
+                
+                st.session_state[pages_key][current_page].append({"role": "assistant", "content": ai_response})
                 upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
-        else:
-            keywords = [
-                "ở đâu", "thành phố", "giá", "thời tiết", "mấy độ", "bao nhiêu", "hôm nay", "tin tức", "ai là", "sự kiện", "trường thcs", "là gì", "dịch", "nghĩa là gì",
-                "mới nhất", "vừa qua", "hiện tại", "năm nay", "tuần này", "tháng này", "vừa mới", "gần đây", "ngày mai", "hôm qua",
-                "giá vàng", "xăng dầu", "cổ phiếu", "tỷ giá", "usd", "bitcoin", "crypto", "thị trường",
-                "tỷ số", "trận đấu", "bóng đá", "ngoại hạng anh", "champions league", "kết quả", "lịch thi đấu", "drama", "scandal", "showbiz",
-                "bản cập nhật", "vừa ra mắt", "ios", "android", "review", "đập hộp", "mở bán", "update", "thông số", "mô hình"
-            ]
-            need_web = any(word in cau_hoi_clean for word in keywords)
-            combined_context = ""
-            sources = []
-            
-            if need_web and not uploaded_file:
-                with st.status("🔍 Đang tra cứu thông tin thực tế rộng...", expanded=False) as status:
-                    web_links = search_the_web_ddg(user_input)
-                    if web_links:
-                        for link in web_links:
-                            content = extract_web_content(link)
-                            if content:
-                                combined_context += f"\n--- Nguồn tham khảo: {link} ---\n{content}\n"
-                                sources.append(link)
-                        status.update(label=" Đọc dữ liệu thành công!", state="complete")
-
-            if combined_context:
-                prompt_payload = (
-                    f"Bạn là Trợ lý AI Toàn năng. Dưới đây là thông tin cập nhật từ Internet để tham khảo:\n"
-                    f"{combined_context}\n\n"
-                    f"Yêu cầu: Trả lời chi tiết dựa trên thông tin này hoặc kiến thức nội tại.\n"
-                    f"CÂU HỎI: {user_input}"
-                )
-            else: 
-                prompt_payload = user_input
-
-            with st.chat_message("assistant", avatar="🐦‍🔥"):
-                try:
-                    chat_session_key = f"ai_session_{u_id}_{current_page}"
-                    if chat_session_key not in st.session_state:
-                        st.session_state[chat_session_key] = st.session_state.ai_client.chats.create(model="gemini-3.6-flash")
-
-                    def response_generator():
-                        if uploaded_file:
-                            response_stream = st.session_state.ai_client.models.generate_content_stream(
-                                model='gemini-3.6-flash',
-                                contents=[Image.open(uploaded_file), prompt_payload],
-                                config=types.GenerateContentConfig(temperature=creativity)
-                            )
-                        else:
-                            response_stream = st.session_state[chat_session_key].send_message_stream(prompt_payload, config={"temperature": creativity})
-                        for chunk in response_stream: 
-                            yield chunk.text
-
-                    ai_response = st.write_stream(response_generator())
-                    if sources:
-                        source_text = "\n\n---\n🌐 **Nguồn liên kết tham cứu:**\n" + "\n".join([f"- {src}" for src in sources])
-                        st.markdown(source_text)
-                        ai_response += source_text
-                    
-                    st.session_state[pages_key][current_page].append({"role": "assistant", "content": ai_response})
-                    upload_single_page_supabase(u_id, current_page, st.session_state[pages_key][current_page])
-                    
-                    if not uploaded_file:
-                        new_embedding = get_embedding(user_input)
-                        if new_embedding is not None:
-                            st.session_state[cache_key].append({
-                                "embedding": new_embedding, "question": user_input, "answer": ai_response
-                            })
-                except Exception as e:
-                    st.markdown(f"❌ Hệ thống bận: {e}. Bạn vui lòng thử lại nhé!")
+                
+                if not uploaded_file:
+                    new_embedding = get_embedding(user_input)
+                    if new_embedding is not None:
+                        st.session_state[cache_key].append({
+                            "embedding": new_embedding, "question": user_input, "answer": ai_response
+                        })
+            except Exception as e:
+                st.markdown(f"❌ Hệ thống bận: {e}. Bạn vui lòng thử lại nhé!")
