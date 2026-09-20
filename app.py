@@ -727,17 +727,18 @@ st.markdown(
         <span class="premium-logo">🐦‍🔥</span>
         <span class="premium-text">TRỢ LÝ AI & CỘNG ĐỒNG</span>
     </div>
-    <div class="sub-title">Tích hợp AI Chatbot & Phòng Chat Chung</div>
+    <div class="sub-title">Tích hợp AI Chatbot, Phòng Chat Chung & Tin Nhắn Riêng</div>
     """,
     unsafe_allow_html=True,
 )
 
 # ============================================================
-# TABS CHÍNH (Đã bỏ Bảng Tin Prompt)
+# TABS CHÍNH
 # ============================================================
-tab_ai, tab_public = st.tabs([
+tab_ai, tab_public, tab_dm = st.tabs([
     "🤖 Chat Với AI", 
-    "💬 Chat Cộng Đồng"
+    "💬 Chat Cộng Đồng",
+    "🔒 Tin Nhắn Riêng"
 ])
 
 # ------------------------------------------------------------
@@ -902,7 +903,6 @@ with tab_public:
 
     st_autorefresh(interval=3000, key="public_chat_refresh")
 
-    # 1. Tự động dọn dẹp các tin nhắn cũ hơn 10 phút trên Database
     try:
         ten_mins_ago = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
         supabase.table("public_messages").delete().lt("created_at", ten_mins_ago).execute()
@@ -923,7 +923,6 @@ with tab_public:
             except Exception as exc:
                 st.error(f"❌ Không gửi được tin nhắn: {safe_error_message(exc)}")
 
-    # Nút xóa toàn bộ cuộc trò chuyện (chỉ riêng bên người dùng này nhìn thấy)
     if st.button("🗑️ Xóa toàn bộ cuộc trò chuyện của tôi", type="secondary"):
         try:
             res_all = supabase.table("public_messages").select("id").execute()
@@ -947,7 +946,6 @@ with tab_public:
         )
         messages_list = res_pub.data or []
         
-        # Lọc bỏ các tin nhắn mà user này đã ẩn/xóa cục bộ
         visible_messages = [
             m for m in messages_list 
             if m.get("id") not in st.session_state[hidden_public_msgs_key]
@@ -979,7 +977,6 @@ with tab_public:
                         unsafe_allow_html=True,
                     )
                 with col_action:
-                    # Nếu là tin nhắn của chính user này, hiển thị nút Thu hồi (xóa vĩnh viễn trên Server để mọi người đều mất)
                     if msg_user == display_name:
                         if st.button("Thu hồi", key=f"revoke_{msg_id}", help="Thu hồi tin nhắn này với mọi người"):
                             try:
@@ -988,10 +985,87 @@ with tab_public:
                             except Exception as exc:
                                 st.error(f"Lỗi: {safe_error_message(exc)}")
                     else:
-                        # Nút xóa riêng phía người này nếu muốn ẩn đi
                         if st.button("Ẩn", key=f"hide_{msg_id}", help="Ẩn tin nhắn này ở màn hình của bạn"):
                             st.session_state[hidden_public_msgs_key].add(msg_id)
                             st.rerun()
 
     except Exception as exc:
         st.error(f"❌ Lỗi tải tin nhắn cộng đồng: {safe_error_message(exc)}")
+
+# ------------------------------------------------------------
+# TAB 3: TIN NHẮN RIÊNG (DIRECT MESSAGES)
+# ------------------------------------------------------------
+with tab_dm:
+    st.subheader("🔒 Nhắn Tin Riêng Tư 1-1")
+    st.caption("Trò chuyện bảo mật giữa bạn và một thành viên khác trong hệ thống.")
+
+    try:
+        users_res = supabase.table("users").select("username, display_name").execute()
+        all_users = users_res.data or []
+        other_users = [u["username"] for u in all_users if u["username"] != u_id]
+    except Exception:
+        other_users = []
+
+    if not other_users:
+        st.info("Chưa có người dùng nào khác trong hệ thống để nhắn tin.")
+    else:
+        selected_receiver = st.selectbox("Chọn người bạn muốn nhắn tin:", other_users, key="dm_receiver_select")
+
+        if selected_receiver:
+            st.markdown(f"--- Đang trò chuyện với **{selected_receiver}** ---")
+            
+            st_autorefresh(interval=3000, key="dm_chat_refresh")
+
+            with st.form(f"dm_form_{selected_receiver}", clear_on_submit=True):
+                dm_input = st.text_input(f"Nhập tin nhắn gửi {selected_receiver}...", key="dm_msg_input")
+                dm_send = st.form_submit_button("📩 Gửi Tin Nhắn Riêng", type="primary")
+                if dm_send and dm_input.strip():
+                    try:
+                        supabase.table("private_messages").insert({
+                            "sender": u_id,
+                            "receiver": selected_receiver,
+                            "message": dm_input.strip(),
+                            "avatar_url": avatar_url,
+                        }).execute()
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(f"❌ Không gửi được tin nhắn: {safe_error_message(exc)}")
+
+            st.markdown("#### 📜 Lịch sử hội thoại")
+            try:
+                res_dm = (
+                    supabase.table("private_messages")
+                    .select("*")
+                    .or_(f"and(sender.eq.{u_id},receiver.eq.{selected_receiver}),and(sender.eq.{selected_receiver},receiver.eq.{u_id})")
+                    .order("created_at", desc=False)
+                    .execute()
+                )
+                dm_list = res_dm.data or []
+
+                if not dm_list:
+                    st.info(f"Chưa có tin nhắn nào giữa bạn và {selected_receiver}. Hãy bắt đầu cuộc trò chuyện!")
+                else:
+                    for msg in dm_list:
+                        m_sender = msg.get("sender")
+                        m_text = msg.get("message")
+                        m_time = msg.get("created_at", "")[:16].replace("T", " ")
+                        m_avatar = msg.get("avatar_url") or DEFAULT_AVATAR
+
+                        is_me = (m_sender == u_id)
+                        bg_color = "#EFF6FF" if is_me else "#FFFFFF"
+                        border_color = "#BFDBFE" if is_me else "#E2E8F0"
+
+                        st.markdown(
+                            f"""
+                            <div style="display: flex; flex-direction: {'row-reverse' if is_me else 'row'}; gap: 10px; margin-bottom: 12px; align-items: flex-start;">
+                                <img src="{m_avatar}" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #3B82F6;" />
+                                <div style="max-width: 70%; background: {bg_color}; border: 1px solid {border_color}; padding: 10px 14px; border-radius: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                                    <div style="font-size: 0.75rem; color: #64748B; margin-bottom: 2px;">{m_sender} • {m_time}</div>
+                                    <div style="color: #1E293B; font-size: 0.95rem; word-break: break-word;">{m_text}</div>
+                                </div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+            except Exception as exc:
+                st.error(f"❌ Lỗi tải tin nhắn riêng: {safe_error_message(exc)}")
