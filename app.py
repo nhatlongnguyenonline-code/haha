@@ -23,7 +23,7 @@ warnings.filterwarnings("ignore")
 # CẤU HÌNH
 # ============================================================
 st.set_page_config(
-    page_title="Trợ Lý AI Toàn Năng",
+    page_title="Trợ Lý AI & Cộng Đồng",
     page_icon="🐦‍🔥",
     layout="centered",
 )
@@ -141,7 +141,7 @@ st.markdown(
         color: #64748B !important;
         font-size: 0.95rem;
         font-weight: 500;
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
     }
 
     /* Nút Bấm Đẹp Mắt */
@@ -155,7 +155,7 @@ st.markdown(
         box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
     }
 
-    /* Khung Đăng Nhập */
+    /* Khung Đăng Nhập & Social Card */
     .login-box {
         padding: 28px;
         border-radius: 20px;
@@ -163,6 +163,24 @@ st.markdown(
         border: 1px solid #E2E8F0;
         box-shadow: 0 10px 25px rgba(0,0,0,0.05);
         margin-bottom: 20px;
+    }
+    .social-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 16px;
+        padding: 16px 20px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    }
+    .social-user {
+        font-weight: 700;
+        color: #2563EB;
+        font-size: 0.9rem;
+    }
+    .social-time {
+        font-size: 0.75rem;
+        color: #94A3B8;
+        float: right;
     }
 
     /* Ẩn bớt hiệu ứng thừa của Streamlit */
@@ -493,7 +511,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.markdown("### 💬 QUẢN LÝ PHÒNG CHAT")
+    st.markdown("### 💬 QUẢN LÝ PHÒNG CHAT AI")
 
     if st.button("➕ Tạo trang chat mới", use_container_width=True, type="primary"):
         pages = st.session_state[pages_key]
@@ -554,8 +572,6 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### 🎵 NHẠC CHILL THƯ GIÃN")
-    
-    # Duy nhất bản nhạc Lofi Study Chill
     LOFI_URL = "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3"
     st.markdown("☕ **Lofi Study Chill**")
     st.audio(LOFI_URL, format="audio/mp3", loop=True)
@@ -672,174 +688,294 @@ st.markdown(
     """
     <div class="premium-title-container">
         <span class="premium-logo">🐦‍🔥</span>
-        <span class="premium-text">TRỢ LÝ AI TOÀN NĂNG</span>
+        <span class="premium-text">TRỢ LÝ AI & CỘNG ĐỒNG</span>
     </div>
-    <div class="sub-title">Hệ thống AI Chatbot tích hợp Gemini và Đám mây Supabase</div>
+    <div class="sub-title">Tích hợp AI Chatbot, Phòng Chat Chung & Bảng Tin Prompt</div>
     """,
     unsafe_allow_html=True,
 )
 
 # ============================================================
-# HIỂN THỊ LỊCH SỬ
+# PHÂN CHIA TABS: AI CHAT vs CHAT CỘNG ĐỒNG vs BẢNG TIN PROMPT
 # ============================================================
-for message in st.session_state[pages_key][current_page]:
-    avatar = "👤" if message["role"] == "user" else "🐦‍🔥"
-    with st.chat_message(message["role"], avatar=avatar):
-        st.markdown(message["content"])
+tab_ai, tab_public, tab_community = st.tabs([
+    "🤖 Chat Với AI", 
+    "💬 Chat Cộng Đồng", 
+    "🌟 Bảng Tin Prompt"
+])
 
-# ============================================================
-# CÂU HỎI MỚI
-# ============================================================
-if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
-    user_input = user_input.strip()
-    if not user_input:
-        st.stop()
+# ------------------------------------------------------------
+# TAB 1: CHAT VỚI AI (Logic gốc của bạn)
+# ------------------------------------------------------------
+with tab_ai:
+    # Hiển thị lịch sử chat AI
+    for message in st.session_state[pages_key][current_page]:
+        avatar = "👤" if message["role"] == "user" else "🐦‍🔥"
+        with st.chat_message(message["role"], avatar=avatar):
+            st.markdown(message["content"])
 
-    current_history = st.session_state[pages_key][current_page]
-    current_history.append({"role": "user", "content": user_input})
+    # Nút chia sẻ câu trả lời cuối cùng lên Bảng tin cộng đồng
+    if st.session_state[pages_key][current_page]:
+        hist = st.session_state[pages_key][current_page]
+        if len(hist) >= 2 and hist[-1]["role"] == "assistant":
+            if st.button("📤 Chia sẻ câu trả lời hay nhất này lên Bảng Tin Prompt", use_container_width=True):
+                try:
+                    last_prompt = hist[-2]["content"]
+                    last_answer = hist[-1]["content"]
+                    supabase.table("community_prompts").insert({
+                        "username": display_name,
+                        "prompt": last_prompt,
+                        "ai_response": last_answer,
+                    }).execute()
+                    st.success("🎉 Đã chia sẻ thành công lên Bảng Tin Prompt!")
+                except Exception as exc:
+                    st.error(f"❌ Lỗi chia sẻ: {safe_error_message(exc)}")
 
-    with st.chat_message("user", avatar="👤"):
-        st.markdown(user_input)
+    # Nhập câu hỏi mới cho AI
+    if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
+        user_input = user_input.strip()
+        if not user_input:
+            st.stop()
 
-    # --------------------------------------------------------
-    # CACHE SEMANTIC
-    # --------------------------------------------------------
-    cache_hit = False
-    cached_answer = ""
+        current_history = st.session_state[pages_key][current_page]
+        current_history.append({"role": "user", "content": user_input})
 
-    if not uploaded_file and st.session_state[cache_key]:
-        current_embedding = get_embedding(user_input)
-        if current_embedding is not None:
-            best_score = -1.0
-            best_match = None
-            for item in st.session_state[cache_key]:
-                score = cosine_similarity(current_embedding, item.get("embedding"))
-                if score > best_score:
-                    best_score = score
-                    best_match = item
-            if best_match is not None and best_score >= CACHE_THRESHOLD:
-                cache_hit = True
-                cached_answer = best_match["answer"]
+        with st.chat_message("user", avatar="👤"):
+            st.markdown(user_input)
 
-    if cache_hit:
-        with st.chat_message("assistant", avatar="🐦‍🔥"):
-            st.markdown(cached_answer)
-            st.caption(f"⚡ Phản hồi từ semantic cache ({CACHE_THRESHOLD:.2f})")
+        # Cache Semantic
+        cache_hit = False
+        cached_answer = ""
 
-        current_history.append({"role": "assistant", "content": cached_answer})
-        upload_single_page_supabase(u_id, current_page, current_history)
-        st.stop()
+        if not uploaded_file and st.session_state[cache_key]:
+            current_embedding = get_embedding(user_input)
+            if current_embedding is not None:
+                best_score = -1.0
+                best_match = None
+                for item in st.session_state[cache_key]:
+                    score = cosine_similarity(current_embedding, item.get("embedding"))
+                    if score > best_score:
+                        best_score = score
+                        best_match = item
+                if best_match is not None and best_score >= CACHE_THRESHOLD:
+                    cache_hit = True
+                    cached_answer = best_match["answer"]
 
-    # --------------------------------------------------------
-    # WEB CONTEXT
-    # --------------------------------------------------------
-    cau_hoi_clean = user_input.lower()
-    keywords = [
-        "ở đâu", "thành phố", "giá", "thời tiết", "mấy độ", "bao nhiêu",
-        "hôm nay", "tin tức", "ai là", "sự kiện", "trường thcs", "là gì",
-        "dịch", "nghĩa là gì", "mới nhất", "vừa qua", "hiện tại", "năm nay",
-        "tuần này", "tháng này", "vừa mới", "gần đây", "ngày mai", "hôm qua",
-        "giá vàng", "xăng dầu", "cổ phiếu", "tỷ giá", "usd", "bitcoin", "crypto",
-        "thị trường", "tỷ số", "trận đấu", "bóng đá", "ngoại hạng anh",
-        "champions league", "kết quả", "lịch thi đấu", "drama", "scandal", "showbiz",
-        "bản cập nhật", "vừa ra mắt", "ios", "android", "review", "đập hộp",
-        "mở bán", "update", "thông số", "mô hình"
-    ]
-    need_web = any(word in cau_hoi_clean for word in keywords)
+        if cache_hit:
+            with st.chat_message("assistant", avatar="🐦‍🔥"):
+                st.markdown(cached_answer)
+                st.caption(f"⚡ Phản hồi từ semantic cache ({CACHE_THRESHOLD:.2f})")
 
-    combined_context = ""
-    sources = []
+            current_history.append({"role": "assistant", "content": cached_answer})
+            upload_single_page_supabase(u_id, current_page, current_history)
+            st.stop()
 
-    if need_web and not uploaded_file:
-        with st.status("🔍 Đang tra cứu thông tin thực tế...", expanded=False) as status:
-            web_links = search_the_web_ddg(user_input)
-            for link in web_links:
-                content = extract_web_content(link)
-                if content:
-                    combined_context += f"\n--- Nguồn tham khảo: {link} ---\n{content}\n"
-                    sources.append(link)
-            status.update(
-                label="✅ Đã đọc dữ liệu web." if sources else "⚠️ Không lấy được nguồn web.",
-                state="complete" if sources else "error",
-            )
+        # Web Context
+        cau_hoi_clean = user_input.lower()
+        keywords = [
+            "ở đâu", "thành phố", "giá", "thời tiết", "mấy độ", "bao nhiêu",
+            "hôm nay", "tin tức", "ai là", "sự kiện", "trường thcs", "là gì",
+            "dịch", "nghĩa là gì", "mới nhất", "vừa qua", "hiện tại", "năm nay",
+            "tuần này", "tháng này", "vừa mới", "gần đây", "ngày mai", "hôm qua",
+            "giá vàng", "xăng dầu", "cổ phiếu", "tỷ giá", "usd", "bitcoin", "crypto",
+            "thị trường", "tỷ số", "trận đấu", "bóng đá", "ngoại hạng anh",
+            "champions league", "kết quả", "lịch thi đấu", "drama", "scandal", "showbiz",
+            "bản cập nhật", "vừa ra mắt", "ios", "android", "review", "đập hộp",
+            "mở bán", "update", "thông số", "mô hình"
+        ]
+        need_web = any(word in cau_hoi_clean for word in keywords)
 
-    if combined_context:
-        prompt_payload = (
-            "Bạn là Trợ lý AI Toàn năng. Hãy trả lời bằng tiếng Việt nếu người dùng hỏi bằng tiếng Việt. "
-            "Dữ liệu web bên dưới chỉ là nguồn tham khảo; không được tự bịa thông tin không có trong dữ liệu hoặc kiến thức của bạn. "
-            "Nếu nguồn mâu thuẫn hoặc không đủ chắc chắn, hãy nói rõ điều đó.\n\n"
-            f"DỮ LIỆU WEB:\n{combined_context}\n\n"
-            f"CÂU HỎI:\n{user_input}"
-        )
-    else:
-        prompt_payload = user_input
+        combined_context = ""
+        sources = []
 
-    # --------------------------------------------------------
-    # GEMINI RESPONSE
-    # --------------------------------------------------------
-    with st.chat_message("assistant", avatar="🐦‍🔥"):
-        try:
-            config = types.GenerateContentConfig(
-                temperature=float(creativity),
-            )
-
-            if uploaded_file:
-                uploaded_file.seek(0)
-                image = Image.open(uploaded_file).convert("RGB")
-                response_stream = st.session_state.ai_client.models.generate_content_stream(
-                    model=AI_MODEL,
-                    contents=[image, prompt_payload],
-                    config=config,
+        if need_web and not uploaded_file:
+            with st.status("🔍 Đang tra cứu thông tin thực tế...", expanded=False) as status:
+                web_links = search_the_web_ddg(user_input)
+                for link in web_links:
+                    content = extract_web_content(link)
+                    if content:
+                        combined_context += f"\n--- Nguồn tham khảo: {link} ---\n{content}\n"
+                        sources.append(link)
+                status.update(
+                    label="✅ Đã đọc dữ liệu web." if sources else "⚠️ Không lấy được nguồn web.",
+                    state="complete" if sources else "error",
                 )
-            else:
-                chat_session_key = f"ai_session_{u_id}_{current_page}"
-                if chat_session_key not in st.session_state:
-                    st.session_state[chat_session_key] = st.session_state.ai_client.chats.create(
+
+        if combined_context:
+            prompt_payload = (
+                "Bạn là Trợ lý AI Toàn năng. Hãy trả lời bằng tiếng Việt nếu người dùng hỏi bằng tiếng Việt. "
+                "Dữ liệu web bên dưới chỉ là nguồn tham khảo; không được tự bịa thông tin không có trong dữ liệu hoặc kiến thức của bạn. "
+                "Nếu nguồn mâu thuẫn hoặc không đủ chắc chắn, hãy nói rõ điều đó.\n\n"
+                f"DỮ LIỆU WEB:\n{combined_context}\n\n"
+                f"CÂU HỎI:\n{user_input}"
+            )
+        else:
+            prompt_payload = user_input
+
+        # Gemini Response
+        with st.chat_message("assistant", avatar="🐦‍🔥"):
+            try:
+                config = types.GenerateContentConfig(
+                    temperature=float(creativity),
+                )
+
+                if uploaded_file:
+                    uploaded_file.seek(0)
+                    image = Image.open(uploaded_file).convert("RGB")
+                    response_stream = st.session_state.ai_client.models.generate_content_stream(
                         model=AI_MODEL,
+                        contents=[image, prompt_payload],
                         config=config,
                     )
-                response_stream = st.session_state[chat_session_key].send_message_stream(
-                    message=prompt_payload,
-                    config=config,
+                else:
+                    chat_session_key = f"ai_session_{u_id}_{current_page}"
+                    if chat_session_key not in st.session_state:
+                        st.session_state[chat_session_key] = st.session_state.ai_client.chats.create(
+                            model=AI_MODEL,
+                            config=config,
+                        )
+                    response_stream = st.session_state[chat_session_key].send_message_stream(
+                        message=prompt_payload,
+                        config=config,
+                    )
+
+                def response_generator():
+                    for chunk in response_stream:
+                        text = getattr(chunk, "text", None)
+                        if text:
+                            yield text
+
+                ai_response = st.write_stream(response_generator())
+                ai_response = ai_response if isinstance(ai_response, str) else str(ai_response or "")
+
+                if not ai_response.strip():
+                    ai_response = "⚠️ AI không trả về nội dung. Bạn hãy thử lại."
+                    st.warning(ai_response)
+
+                if sources:
+                    source_text = "\n\n---\n🌐 **Nguồn tham khảo:**\n" + "\n".join(
+                        f"- {src}" for src in sources
+                    )
+                    st.markdown(source_text)
+                    ai_response += source_text
+
+                current_history.append({"role": "assistant", "content": ai_response})
+                upload_single_page_supabase(u_id, current_page, current_history)
+
+                if not uploaded_file and not sources:
+                    new_embedding = get_embedding(user_input)
+                    if new_embedding is not None:
+                        st.session_state[cache_key].append({
+                            "embedding": new_embedding,
+                            "question": user_input,
+                            "answer": ai_response,
+                            "created_at": time.time(),
+                        })
+                        st.session_state[cache_key] = st.session_state[cache_key][-100:]
+
+            except Exception as exc:
+                error_text = safe_error_message(exc)
+                error_message = f"❌ Hệ thống AI gặp lỗi: {error_text}"
+                st.error(error_message)
+                if current_history and current_history[-1].get("role") == "user":
+                    current_history.pop()
+
+# ------------------------------------------------------------
+# TAB 2: CHAT CỘNG ĐỒNG (Global Lounge)
+# ------------------------------------------------------------
+with tab_public:
+    st.caption("💬 Khung chat chung giữa tất cả các thành viên trong hệ thống.")
+    
+    col_refresh, _ = st.columns([1, 4])
+    with col_refresh:
+        if st.button("🔄 Tải tin mới", key="ref_pub"):
+            st.rerun()
+
+    # Form gửi tin nhắn cộng đồng
+    with st.form("public_chat_form", clear_on_submit=True):
+        pub_msg = st.text_input("Viết tin nhắn gửi tới mọi người...", key="pub_input")
+        send_btn = st.form_submit_button("🚀 Gửi Tin Nhắn", type="primary")
+        if send_btn and pub_msg.strip():
+            try:
+                supabase.table("public_messages").insert({
+                    "username": display_name,
+                    "message": pub_msg.strip(),
+                }).execute()
+                st.rerun()
+            except Exception as exc:
+                st.error(f"❌ Không gửi được tin nhắn: {safe_error_message(exc)}")
+
+    st.markdown("---")
+    
+    # Tải danh sách 30 tin nhắn mới nhất
+    try:
+        res_pub = (
+            supabase.table("public_messages")
+            .select("*")
+            .order("id", desc=True)
+            .limit(30)
+            .execute()
+        )
+        messages_list = res_pub.data or []
+        
+        if not messages_list:
+            st.info("Chưa có tin nhắn nào. Hãy là người đầu tiên trò chuyện!")
+        else:
+            for item in messages_list:
+                time_str = item.get("created_at", "")[:16].replace("T", " ")
+                st.markdown(
+                    f"""
+                    <div class="social-card">
+                        <span class="social-user">👤 {item.get('username')}</span>
+                        <span class="social-time">🕒 {time_str}</span>
+                        <div style="margin-top: 6px; color: #334155;">{item.get('message')}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
                 )
+    except Exception as exc:
+        st.error(f"❌ Lỗi tải tin nhắn cộng đồng: {safe_error_message(exc)}")
 
-            def response_generator():
-                for chunk in response_stream:
-                    text = getattr(chunk, "text", None)
-                    if text:
-                        yield text
+# ------------------------------------------------------------
+# TAB 3: BẢNG TIN PROMPT HỒNG (Community Feed)
+# ------------------------------------------------------------
+with tab_community:
+    st.caption("🌟 Nơi chia sẻ những câu hỏi (Prompt) hay và câu trả lời AI ấn tượng nhất.")
 
-            ai_response = st.write_stream(response_generator())
-            ai_response = ai_response if isinstance(ai_response, str) else str(ai_response or "")
+    try:
+        res_feed = (
+            supabase.table("community_prompts")
+            .select("*")
+            .order("likes", desc=True)
+            .order("id", desc=True)
+            .limit(20)
+            .execute()
+        )
+        feed_items = res_feed.data or []
 
-            if not ai_response.strip():
-                ai_response = "⚠️ AI không trả về nội dung. Bạn hãy thử lại."
-                st.warning(ai_response)
+        if not feed_items:
+            st.info("Chưa có chia sẻ nào. Trải nghiệm chat AI và bấm nút 'Chia sẻ' ở Tab Chat nhé!")
+        else:
+            for card in feed_items:
+                c_id = card.get("id")
+                c_user = card.get("username", "Vô danh")
+                c_prompt = card.get("prompt", "")
+                c_answer = card.get("ai_response", "")
+                c_likes = card.get("likes", 0)
 
-            if sources:
-                source_text = "\n\n---\n🌐 **Nguồn tham khảo:**\n" + "\n".join(
-                    f"- {src}" for src in sources
-                )
-                st.markdown(source_text)
-                ai_response += source_text
-
-            current_history.append({"role": "assistant", "content": ai_response})
-            upload_single_page_supabase(u_id, current_page, current_history)
-
-            if not uploaded_file and not sources:
-                new_embedding = get_embedding(user_input)
-                if new_embedding is not None:
-                    st.session_state[cache_key].append({
-                        "embedding": new_embedding,
-                        "question": user_input,
-                        "answer": ai_response,
-                        "created_at": time.time(),
-                    })
-                    st.session_state[cache_key] = st.session_state[cache_key][-100:]
-
-        except Exception as exc:
-            error_text = safe_error_message(exc)
-            error_message = f"❌ Hệ thống AI gặp lỗi: {error_text}"
-            st.error(error_message)
-            if current_history and current_history[-1].get("role") == "user":
-                current_history.pop()
+                with st.expander(f"📌 Chia sẻ từ **{c_user}**: *\"{c_prompt[:50]}...\"*"):
+                    st.markdown(f"**❓ Câu hỏi / Prompt:**\n> {c_prompt}")
+                    st.markdown(f"**🤖 AI Trả lời:**\n{c_answer}")
+                    
+                    col_like, col_info = st.columns([1, 4])
+                    with col_like:
+                        if st.button(f"❤️ Thích ({c_likes})", key=f"like_{c_id}"):
+                            try:
+                                supabase.table("community_prompts").update({
+                                    "likes": c_likes + 1
+                                }).eq("id", c_id).execute()
+                                st.rerun()
+                            except Exception:
+                                pass
+    except Exception as exc:
+        st.error(f"❌ Lỗi tải bảng tin Prompt: {safe_error_message(exc)}")
