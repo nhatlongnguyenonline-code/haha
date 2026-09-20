@@ -16,6 +16,7 @@ from PIL import Image
 from google import genai
 from google.genai import types
 from supabase import create_client, Client
+from streamlit_autorefresh import st_autorefresh
 
 warnings.filterwarnings("ignore")
 
@@ -705,7 +706,7 @@ tab_ai, tab_public, tab_community = st.tabs([
 ])
 
 # ------------------------------------------------------------
-# TAB 1: CHAT VỚI AI (Logic gốc của bạn)
+# TAB 1: CHAT VỚI AI
 # ------------------------------------------------------------
 with tab_ai:
     # Hiển thị lịch sử chat AI
@@ -881,15 +882,13 @@ with tab_ai:
                     current_history.pop()
 
 # ------------------------------------------------------------
-# TAB 2: CHAT CỘNG ĐỒNG (Global Lounge)
+# TAB 2: CHAT CỘNG ĐỒNG (Global Lounge) - AUTO REFRESH 3S
 # ------------------------------------------------------------
 with tab_public:
-    st.caption("💬 Khung chat chung giữa tất cả các thành viên trong hệ thống.")
-    
-    col_refresh, _ = st.columns([1, 4])
-    with col_refresh:
-        if st.button("🔄 Tải tin mới", key="ref_pub"):
-            st.rerun()
+    st.caption("💬 Khung chat chung giữa tất cả các thành viên (Tự động cập nhật mỗi 3 giây).")
+
+    # Tự động cập nhật tin nhắn mới mỗi 3000ms (3 giây)
+    st_autorefresh(interval=3000, key="public_chat_refresh")
 
     # Form gửi tin nhắn cộng đồng
     with st.form("public_chat_form", clear_on_submit=True):
@@ -937,7 +936,7 @@ with tab_public:
         st.error(f"❌ Lỗi tải tin nhắn cộng đồng: {safe_error_message(exc)}")
 
 # ------------------------------------------------------------
-# TAB 3: BẢNG TIN PROMPT HỒNG (Community Feed)
+# TAB 3: BẢNG TIN PROMPT (Community Feed)
 # ------------------------------------------------------------
 with tab_community:
     st.caption("🌟 Nơi chia sẻ những câu hỏi (Prompt) hay và câu trả lời AI ấn tượng nhất.")
