@@ -38,8 +38,8 @@ MAX_WEB_RESULTS = int(st.secrets.get("MAX_WEB_RESULTS", 3))
 MAX_PAGE_TEXT = int(st.secrets.get("MAX_PAGE_TEXT", 2500))
 
 DEFAULT_AVATAR = "https://www.w3schools.com/howto/img_avatar.png"
-# Link ảnh Phượng Hoàng Lửa 3D sống động & rực rỡ
-AI_AVATAR_URL = "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=500&q=80" 
+# Link ảnh Phượng Hoàng Lửa trực tiếp (đã kiểm tra hiển thị ổn định)
+AI_AVATAR_URL = "https://images2.alphacoders.com/520/thumb-1920-520625.jpg"
 
 # ============================================================
 # GIAO DIỆN & NÂNG CẤP ĐỒ HỌA (ADVANCED UI/UX & AVATAR FIT)
@@ -790,7 +790,7 @@ tab_ai, tab_public, tab_community = st.tabs([
 ])
 
 # ------------------------------------------------------------
-# TAB 1: CHAT VỚI AI (AVATAR PHƯỢNG HOÀNG SỐNG ĐỘNG)
+# TAB 1: CHAT VỚI AI
 # ------------------------------------------------------------
 with tab_ai:
     for message in st.session_state[pages_key][current_page]:
