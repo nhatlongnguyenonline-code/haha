@@ -916,14 +916,14 @@ with tab_ai:
 # TAB 2: CHAT CỘNG ĐỒNG
 # ------------------------------------------------------------
 with tab_public:
-    st.caption("💬 Khung chat chung (Tự động xóa tin nhắn sau 1 tiếng; Tin nhắn tự động làm mới mỗi 3 giây).")
+    st.caption("💬 Khung chat chung (Tự động xóa tin nhắn sau 10 phút; Tin nhắn tự động làm mới mỗi 3 giây).")
 
     st_autorefresh(interval=3000, key="public_chat_refresh")
 
-    # 1. Tự động dọn dẹp các tin nhắn cũ hơn 1 tiếng trên Database
+    # 1. Tự động dọn dẹp các tin nhắn cũ hơn 10 phút trên Database
     try:
-        one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
-        supabase.table("public_messages").delete().lt("created_at", one_hour_ago).execute()
+        ten_mins_ago = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        supabase.table("public_messages").delete().lt("created_at", ten_mins_ago).execute()
     except Exception:
         pass
 
