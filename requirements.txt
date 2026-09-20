@@ -8,3 +8,4 @@ ddgs
 pillow
 requests
 httpx
+streamlit-autorefresh
