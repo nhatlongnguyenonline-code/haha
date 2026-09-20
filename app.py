@@ -515,21 +515,10 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🎵 NHẠC CHILL THƯ GIÃN")
     
-    # Danh sách nhạc chuẩn từ Wikimedia Commons và Internet Archive (100% hoạt động & không bao giờ lỗi CORS)
-    PLAYLIST = {
-        "☕ Lofi Study Chill": "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3",
-        "🌌 Piano Moonlight Sonata": "https://upload.wikimedia.org/wikipedia/commons/b/ba/Ludwig_van_Beethoven_-_Moonlight_Sonata_1st_movement.ogg",
-        "🎸 Chill Acoustic Guitar": "https://upload.wikimedia.org/wikipedia/commons/2/27/Spanish_Guitar_Nylon_Strings.ogg",
-        "🌧️ Tiếng Mưa & Sấm Nhẹ": "https://upload.wikimedia.org/wikipedia/commons/4/4b/Rain_and_thunder.ogg",
-        "🎷 Smooth Jazz Night": "https://ia800301.us.archive.org/15/items/SmoothJazzRadio/SmoothJazz.mp3"
-    }
-    
-    selected_song = st.selectbox(
-        "Chọn bản nhạc yêu thích:",
-        options=list(PLAYLIST.keys()),
-        index=0,
-    )
-    st.audio(PLAYLIST[selected_song], loop=True)
+    # Chỉ giữ duy nhất Lofi Study Chill
+    LOFI_URL = "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3"
+    st.markdown("☕ **Lofi Study Chill**")
+    st.audio(LOFI_URL, format="audio/mp3", loop=True)
 
     st.markdown("---")
     st.markdown("### ⚙️ CÀI ĐẶT CHATBOT")
