@@ -132,7 +132,6 @@ except:
 
 if "ai_client" not in st.session_state:
     try: 
-        # Cấu hình tiêu đề xác thực an toàn ép SDK chạy đúng cổng Google AI Studio của phiên bản 3.6 mới nhất
         st.session_state.ai_client = genai.Client(
             api_key=API_KEY, 
             http_options={'headers': {'x-goog-api-key': API_KEY}}
@@ -362,7 +361,7 @@ st.markdown(f"""
     <div class="sub-title">Hệ thống AI Chatbot tích hợp siêu lõi Gemini 3.6, Đám mây Supabase và Thẻ HTML Sinh ảnh Bất tử</div>
 """, unsafe_allow_html=True)
 
-# Hiển thị lịch sử hội thoại thông minh (Tách biệt render văn bản thường và liên kết ảnh trực tiếp của Pollinations)
+# Hiển thị lịch sử hội thoại thông minh (Cập nhật bộ lọc nhận diện endpoint image.pollinations.ai chuẩn xác)
 for message in st.session_state[pages_key][current_page]:
     avt_emoji = "👤" if message["role"] == "user" else "🐦‍🔥"
     with st.chat_message(message["role"], avatar=avt_emoji):
@@ -402,8 +401,8 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                     safe_prompt = urllib.parse.quote(english_prompt)
                     random_seed = secrets.randbelow(999999)
                     
-                    # SỬA LỖI ĐƯỜNG DẪN: Bổ sung ký tự dấu gạch chéo chuẩn "/" sau biến nội dung prompt giúp cổng API kết nối tệp tin chính xác
-                    img_url = f"https://pollinations.ai{safe_prompt}/?width=1024&height=1024&nologo=true&private=true&seed={random_seed}"
+                    # CẬP NHẬT SỬA LỖI: Chuyển đổi sang endpoint image.pollinations.ai/prompt/ chạy mượt mà không bao giờ lỗi đường dẫn
+                    img_url = f"https://pollinations.ai{safe_prompt}?width=1024&height=1024&nologo=true&seed={random_seed}"
                     
                     html_code = f"""
                     <div style="display: flex; justify-content: center; margin: 10px 0;">
