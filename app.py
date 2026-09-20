@@ -17,7 +17,6 @@ from PIL import Image
 from google import genai
 from google.genai import types
 from supabase import create_client, Client
-from streamlit_autorefresh import st_autorefresh
 
 warnings.filterwarnings("ignore")
 
@@ -838,9 +837,23 @@ with tab_ai:
 # TAB 2: CHAT CỘNG ĐỒNG
 # ------------------------------------------------------------
 with tab_public:
-    sb.caption("💬 Khung chat chung (Tự động xóa tin nhắn sau 10 phút; Tin nhắn tự động làm mới mỗi 3 giây).")
+    sb.caption("💬 Khung chat chung (Tự động xóa tin nhắn sau 10 phút). Nhấn nút 'Làm mới' để cập nhật tin nhắn mới nhất.")
 
-    st_autorefresh(interval=3000, key="public_chat_refresh")
+    col_btn_refresh1, col_btn_clear1 = sb.columns([1, 1])
+    with col_btn_refresh1:
+        if sb.button("🔄 Làm mới tin nhắn cộng đồng", use_container_width=True):
+            sb.rerun()
+    with col_btn_clear1:
+        if sb.button("🗑️ Xóa lịch sử hiển thị của tôi", use_container_width=True, type="secondary"):
+            try:
+                res_all = supabase.table("public_messages").select("id").execute()
+                if res_all.data:
+                    for msg_item in res_all.data:
+                        sb.session_state[hidden_public_msgs_key].add(msg_item.get("id"))
+                sb.success("✅ Đã xóa sạch lịch sử chat phía giao diện của bạn.")
+                sb.rerun()
+            except Exception as exc:
+                sb.error(f"❌ Không thể thực hiện: {safe_error_message(exc)}")
 
     try:
         ten_mins_ago = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
@@ -861,17 +874,6 @@ with tab_public:
                 sb.rerun()
             except Exception as exc:
                 sb.error(f"❌ Không gửi được tin nhắn: {safe_error_message(exc)}")
-
-    if sb.button("🗑️ Xóa toàn bộ cuộc trò chuyện của tôi", type="secondary"):
-        try:
-            res_all = supabase.table("public_messages").select("id").execute()
-            if res_all.data:
-                for msg_item in res_all.data:
-                    sb.session_state[hidden_public_msgs_key].add(msg_item.get("id"))
-            sb.success("✅ Đã xóa sạch lịch sử chat phía giao diện của bạn.")
-            sb.rerun()
-        except Exception as exc:
-            sb.error(f"❌ Không thể thực hiện: {safe_error_message(exc)}")
 
     sb.markdown("---")
     
@@ -942,17 +944,15 @@ with tab_dm:
     except Exception:
         other_users = []
 
-    # Lấy danh sách bạn bè và lời mời từ bảng friendships
     try:
         friend_res = supabase.table("friendships").select("*").or_(f"sender.eq.{u_id},receiver.eq.{u_id}").execute()
         friendships_data = friend_res.data or []
     except Exception:
         friendships_data = []
 
-    # Phân loại mối quan hệ
     friend_list = []
-    pending_requests = [] # Lời mời người khác gửi cho mình (cần duyệt)
-    sent_requests = []    # Lời mời mình đã gửi đi
+    pending_requests = []
+    sent_requests = []
 
     for f in friendships_data:
         s = f.get("sender")
@@ -970,7 +970,6 @@ with tab_dm:
             elif s == u_id:
                 sent_requests.append(r)
 
-    # Giao diện Zalo Style: Chia thành 2 tab nhỏ (Trò chuyện & Danh bạ / Lời mời kết bạn)
     sub_tab_chat, sub_tab_contacts = sb.tabs(["💬 Trò Chuyện", "👥 Danh Bạ & Kết Bạn"])
 
     with sub_tab_contacts:
@@ -1075,6 +1074,9 @@ with tab_dm:
             selected_dname = sb.selectbox("Chọn bạn bè để trò chuyện:", list(friend_options.keys()), key="select_friend_chat")
             selected_receiver = friend_options[selected_dname]
 
+            if sb.button("🔄 Làm mới khung chat riêng"):
+                sb.rerun()
+
             sb.markdown("---")
 
             receiver_info = next((u for u in other_users if u["username"] == selected_receiver), {"display_name": selected_receiver, "avatar_url": DEFAULT_AVATAR})
@@ -1093,8 +1095,6 @@ with tab_dm:
                 """,
                 unsafe_allow_html=True,
             )
-
-            st_autorefresh(interval=3000, key="zalo_dm_refresh")
 
             chat_container = sb.container(height=400)
             with chat_container:
