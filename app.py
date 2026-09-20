@@ -4,7 +4,6 @@ import time
 import json
 import hashlib
 import secrets
-import io
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
@@ -22,7 +21,7 @@ from streamlit_autorefresh import st_autorefresh
 warnings.filterwarnings("ignore")
 
 # ============================================================
-# CẤU HÌNH TRANG STREAMLIT
+# CẤU HÌNH
 # ============================================================
 st.set_page_config(
     page_title="Trợ Lý AI & Cộng Đồng",
@@ -39,11 +38,8 @@ MAX_PAGE_TEXT = int(st.secrets.get("MAX_PAGE_TEXT", 2500))
 
 DEFAULT_AVATAR = "https://www.w3schools.com/howto/img_avatar.png"
 
-# Link ảnh Phượng Hoàng Lửa trực tiếp (Link Wikimedia Commons không bao giờ bị chặn/gãy)
-AI_AVATAR_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Phoenix_logo.svg/512px-Phoenix_logo.svg.png"
-
 # ============================================================
-# GIAO DIỆN & NÂNG CẤP ĐỒ HỌA (ADVANCED UI/UX & AVATAR FIT)
+# GIAO DIỆN & NÂNG CẤP ĐỒ HỌA (ADVANCED UI/UX)
 # ============================================================
 st.markdown(
     """
@@ -80,20 +76,18 @@ st.markdown(
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.05) !important;
     }
 
-    /* Avatar Chatbot & Người dùng trong khung chat AI */
+    /* Avatar Chatbot & Người dùng */
     [data-testid="stChatMessageAvatar"] {
         border-radius: 50% !important;
-        border: 2px solid #F59E0B !important;
-        box-shadow: 0 2px 10px rgba(245, 158, 11, 0.3) !important;
+        border: 2px solid #3B82F6 !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
         transition: transform 0.2s ease !important;
-        object-fit: cover !important;
-        object-position: center !important;
     }
     [data-testid="stChatMessageAvatar"]:hover {
-        transform: scale(1.15) !important;
+        transform: scale(1.1) !important;
     }
 
-    /* Thanh Nhập Tin Nhắn Nổi */
+    /* Thanh Nhập Tin Nhắn Nổi Đẳng Cấp */
     .stChatInput {
         position: fixed !important;
         bottom: 25px !important;
@@ -141,7 +135,7 @@ st.markdown(
         font-size: 2.4rem;
         font-weight: 900;
         letter-spacing: -0.5px;
-        background: linear-gradient(90deg, #EF4444 0%, #F59E0B 100%);
+        background: linear-gradient(90deg, #2563EB 0%, #7C3AED 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
@@ -194,36 +188,30 @@ st.markdown(
         color: #94A3B8;
         margin-left: auto;
     }
-    
-    /* CSS Avatar nhỏ ở Tab Chat Cộng Đồng */
     .user-avatar-img {
-        width: 44px;
-        height: 44px;
+        width: 42px;
+        height: 42px;
         border-radius: 50%;
-        object-fit: cover !important;
-        object-position: center !important;
+        object-fit: cover;
         border: 2px solid #3B82F6;
-        flex-shrink: 0;
     }
 
-    /* CSS Sidebar Profile Card & Avatar Tròn Căn Giữa */
+    /* Sidebar Profile Card */
     .profile-card {
         text-align: center;
         padding: 10px 0;
     }
     .profile-avatar {
-        width: 90px;
-        height: 90px;
+        width: 80px;
+        height: 80px;
         border-radius: 50%;
-        object-fit: cover !important;
-        object-position: center !important;
+        object-fit: cover;
         border: 3px solid #3B82F6;
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        margin: 0 auto 10px auto;
-        display: block;
+        margin-bottom: 8px;
     }
 
-    /* Ẩn bớt biểu tượng mặc định Streamlit */
+    /* Ẩn bớt hiệu ứng thừa của Streamlit */
     [data-testid="stHeaderHeading"] svg,
     [data-testid="stElementContainer"] h1 svg {
         display: none !important;
@@ -237,7 +225,7 @@ st.markdown(
 # TIỆN ÍCH CHUNG
 # ============================================================
 def safe_error_message(exc):
-    """Xóa bỏ thông tin nhạy cảm khỏi thông báo lỗi."""
+    """Không hiển thị secret/token trong thông báo lỗi."""
     text = str(exc).replace("\n", " ")
     for secret_name in ("GEMINI_API_KEY", "SUPABASE_KEY", "SUPABASE_URL"):
         secret_value = st.secrets.get(secret_name, "")
@@ -512,47 +500,35 @@ except Exception:
     pass
 
 # ============================================================
-# SIDEBAR
+# SIDEBAR (Bao gồm chức năng Đổi Avatar)
 # ============================================================
 with st.sidebar:
     st.markdown(
         f"""
         <div class="profile-card">
             <img src="{avatar_url}" class="profile-avatar" />
-            <h3 style="margin: 0; color: #0F172A; font-size: 1.15rem;">{display_name.upper()}</h3>
+            <h3 style="margin: 0; color: #0F172A;">{display_name.upper()}</h3>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # Đổi Avatar & Cắt Vuông Tự Động
+    # Đổi Avatar
     with st.popover("🖼️ Đổi Avatar"):
         uploaded_avatar = st.file_uploader("Chọn ảnh từ máy...", type=["jpg", "png", "jpeg", "webp"], key="avatar_file")
         if uploaded_avatar and st.button("Lưu Avatar Mới", type="primary", use_container_width=True):
             try:
-                image = Image.open(uploaded_avatar)
-                width, height = image.size
-                min_dim = min(width, height)
-                left = (width - min_dim) / 2
-                top = (height - min_dim) / 2
-                right = (width + min_dim) / 2
-                bottom = (height + min_dim) / 2
-                
-                cropped_img = image.crop((left, top, right, bottom))
-                
-                img_byte_arr = io.BytesIO()
-                cropped_img.save(img_byte_arr, format='PNG')
-                file_bytes = img_byte_arr.getvalue()
+                file_bytes = uploaded_avatar.read()
+                file_ext = uploaded_avatar.name.split(".")[-1]
+                file_path = f"{u_id}_{int(time.time())}.{file_ext}"
 
-                file_path = f"{u_id}_{int(time.time())}.png"
-
-                supabase.storage.from_("avatars").upload(
-                    file_path, 
-                    file_bytes, 
-                    {"content-type": "image/png"}
-                )
+                # Upload lên Bucket avatars của Supabase
+                supabase.storage.from_("avatars").upload(file_path, file_bytes, {"content-type": uploaded_avatar.type})
                 
+                # Lấy public URL
                 public_avatar_url = supabase.storage.from_("avatars").get_public_url(file_path)
+
+                # Cập nhật DB
                 supabase.table("users").update({"avatar_url": public_avatar_url}).eq("username", u_id).execute()
                 st.success("✅ Cập nhật avatar thành công!")
                 st.rerun()
@@ -782,7 +758,7 @@ st.markdown(
 )
 
 # ============================================================
-# TABS CHÍNH
+# PHÂN CHIA TABS: AI CHAT vs CHAT CỘNG ĐỒNG vs BẢNG TIN PROMPT
 # ============================================================
 tab_ai, tab_public, tab_community = st.tabs([
     "🤖 Chat Với AI", 
@@ -795,7 +771,7 @@ tab_ai, tab_public, tab_community = st.tabs([
 # ------------------------------------------------------------
 with tab_ai:
     for message in st.session_state[pages_key][current_page]:
-        current_avatar = avatar_url if message["role"] == "user" else AI_AVATAR_URL
+        current_avatar = avatar_url if message["role"] == "user" else "🐦‍🔥"
         with st.chat_message(message["role"], avatar=current_avatar):
             st.markdown(message["content"])
 
@@ -845,7 +821,7 @@ with tab_ai:
                     cached_answer = best_match["answer"]
 
         if cache_hit:
-            with st.chat_message("assistant", avatar=AI_AVATAR_URL):
+            with st.chat_message("assistant", avatar="🐦‍🔥"):
                 st.markdown(cached_answer)
                 st.caption(f"⚡ Phản hồi từ semantic cache ({CACHE_THRESHOLD:.2f})")
 
@@ -894,7 +870,7 @@ with tab_ai:
         else:
             prompt_payload = user_input
 
-        with st.chat_message("assistant", avatar=AI_AVATAR_URL):
+        with st.chat_message("assistant", avatar="🐦‍🔥"):
             try:
                 config = types.GenerateContentConfig(
                     temperature=float(creativity),
@@ -962,11 +938,12 @@ with tab_ai:
                     current_history.pop()
 
 # ------------------------------------------------------------
-# TAB 2: CHAT CỘNG ĐỒNG
+# TAB 2: CHAT CỘNG ĐỒNG (Global Lounge) - TỰ ĐỘNG CẬP NHẬT MỖI 3S
 # ------------------------------------------------------------
 with tab_public:
     st.caption("💬 Khung chat chung giữa tất cả các thành viên (Tự động cập nhật mỗi 3 giây).")
 
+    # Tự động cập nhật ngầm sau mỗi 3 giây
     st_autorefresh(interval=3000, key="public_chat_refresh")
 
     with st.form("public_chat_form", clear_on_submit=True):
@@ -1018,7 +995,7 @@ with tab_public:
         st.error(f"❌ Lỗi tải tin nhắn cộng đồng: {safe_error_message(exc)}")
 
 # ------------------------------------------------------------
-# TAB 3: BẢNG TIN PROMPT
+# TAB 3: BẢNG TIN PROMPT (Community Feed)
 # ------------------------------------------------------------
 with tab_community:
     st.caption("🌟 Nơi chia sẻ những câu hỏi (Prompt) hay và câu trả lời AI ấn tượng nhất.")
