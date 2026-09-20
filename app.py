@@ -668,7 +668,7 @@ def extract_web_content(url):
         return ""
 
 # ============================================================
-# TITLE (ĐÃ TÍCH HỢP HIỆU ỨNG GRADIENT & PHƯỢNG HOÀNG 🐦‍🔥)
+# TITLE (GRADIENT & PHƯỢNG HOÀNG 🐦‍🔥)
 # ============================================================
 sb.markdown(
     """
@@ -694,13 +694,13 @@ tab_ai, tab_public, tab_dm = sb.tabs([
 # TAB 1: CHAT VỚI AI
 # ------------------------------------------------------------
 with tab_ai:
-    # 1. Hiển thị lịch sử chat trước tiên
+    # 1. Lịch sử tin nhắn được render ở trên (Streamlit tự động ghim `st.chat_input` xuống dưới cùng màn hình)
     for message in sb.session_state[pages_key][current_page]:
         current_avatar = avatar_url if message["role"] == "user" else AI_AVATAR_EMOJI
         with sb.chat_message(message["role"], avatar=current_avatar):
             sb.markdown(message["content"])
 
-    # 2. Khung chat_input đặt ở dưới cùng của tab
+    # 2. Thanh nhập câu hỏi chuẩn chat_input tự động bám đáy
     if user_input := sb.chat_input("Nhập câu hỏi của bạn vào đây..."):
         user_input = user_input.strip()
         if not user_input:
