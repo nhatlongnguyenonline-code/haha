@@ -514,6 +514,21 @@ with st.sidebar:
                 st.rerun()
 
     st.markdown("---")
+    st.markdown("### 🎵 NHẠC CHILL THƯ GIÃN")
+    PLAYLIST = {
+        "☕ Lofi Study Chill": "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3",
+        "🌧️ Mưa & Lofi Beats": "https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a7315b.mp3",
+        "🌌 Piano Thư Giãn": "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3",
+        "🎸 Acoustic Guitar Gentle": "https://cdn.pixabay.com/download/audio/2021/09/06/audio_78f16b24a5.mp3",
+    }
+    selected_song = st.selectbox(
+        "Chọn bản nhạc yêu thích:",
+        options=list(PLAYLIST.keys()),
+        index=0,
+    )
+    st.audio(PLAYLIST[selected_song], format="audio/mp3", loop=True)
+
+    st.markdown("---")
     st.markdown("### ⚙️ CÀI ĐẶT CHATBOT")
     creativity = st.slider(
         "🧠 Độ nhạy bén / Sáng tạo",
