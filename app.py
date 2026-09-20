@@ -36,83 +36,103 @@ MAX_WEB_RESULTS = int(st.secrets.get("MAX_WEB_RESULTS", 3))
 MAX_PAGE_TEXT = int(st.secrets.get("MAX_PAGE_TEXT", 2500))
 
 # ============================================================
-# GIAO DIỆN
+# GIAO DIỆN & NÂNG CẤP ĐỒ HỌA (ADVANCED UI/UX)
 # ============================================================
 st.markdown(
     """
     <style>
+    /* CSS Nền chung */
+    .main {
+        background-color: #FAFAFA !important;
+    }
+
+    /* Sidebar thiết kế phong cách Glassmorphism */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #F8FAFC 0%, #FFF7ED 100%) !important;
-        border-right: 1px solid #FED7AA !important;
+        background: linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%) !important;
+        border-right: 1px solid #E2E8F0 !important;
+        box-shadow: 4px 0 15px rgba(0, 0, 0, 0.02) !important;
     }
+
+    /* Tùy chỉnh Bong Bóng Chat */
     [data-testid="stChatMessage"] {
-        border-radius: 18px !important;
-        margin-bottom: 16px !important;
-        padding: 16px 20px !important;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important;
+        border-radius: 20px !important;
+        margin-bottom: 18px !important;
+        padding: 18px 22px !important;
+        transition: all 0.2s ease-in-out !important;
     }
+    
     [data-testid="stChatMessageAssistant"] {
-        background-color: #FFFDFA !important;
-        border: 1px solid #FFE4E6 !important;
+        background: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
     }
+
     [data-testid="stChatMessageUser"] {
-        background-color: #F0F6FF !important;
-        border: 1px solid #DBEAFE !important;
+        background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%) !important;
+        border: 1px solid #BFDBFE !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.05) !important;
     }
+
+    /* Avatar Chatbot & Người dùng */
+    [data-testid="stChatMessageAvatar"] {
+        border-radius: 50% !important;
+        border: 2px solid #3B82F6 !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+        transition: transform 0.2s ease !important;
+    }
+    [data-testid="stChatMessageAvatar"]:hover {
+        transform: scale(1.1) !important;
+    }
+
+    /* Thanh Nhập Tin Nhắn Nổi Đẳng Cấp */
     .stChatInput {
         position: fixed !important;
-        bottom: 30px !important;
+        bottom: 25px !important;
         left: 50% !important;
         transform: translateX(-50%) !important;
         z-index: 999 !important;
         width: 100% !important;
-        max-width: 550px !important;
-        display: flex !important;
-        justify-content: center !important;
+        max-width: 650px !important;
     }
+
     .stChatInput [data-testid="stChatInputCurrentContainer"] {
-        width: 100% !important;
         border: 2px solid #3B82F6 !important;
-        border-radius: 24px !important;
-        background-color: #F8FAFC !important;
-        padding: 4px 10px !important;
-        box-shadow: 0 10px 30px -5px rgba(59, 130, 246, 0.2) !important;
+        border-radius: 28px !important;
+        background: #FFFFFF !important;
+        padding: 6px 14px !important;
+        box-shadow: 0 12px 35px rgba(59, 130, 246, 0.18) !important;
+        transition: all 0.3s ease !important;
     }
+
+    .stChatInput [data-testid="stChatInputCurrentContainer"]:focus-within {
+        box-shadow: 0 12px 40px rgba(59, 130, 246, 0.35) !important;
+        border-color: #2563EB !important;
+    }
+
     .stChatInput textarea {
-        color: #1F2937 !important;
-        font-size: 0.95rem !important;
+        color: #0F172A !important;
+        font-size: 0.98rem !important;
         font-weight: 500 !important;
     }
-    .stChatInput button {
-        background-color: #3B82F6 !important;
-        color: white !important;
-        border-radius: 50% !important;
-    }
-    [data-testid="stHeaderHeading"] svg,
-    [data-testid="stElementContainer"] h1 svg {
-        display: none !important;
-    }
-    [data-testid="stChatMessageAvatar"] {
-        border-radius: 50% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        font-size: 1.2rem !important;
-    }
+
+    /* Tiêu Đề Nổi Bật */
     .premium-title-container {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 12px;
-        margin-top: 1.5rem;
-        margin-bottom: 4px;
+        gap: 14px;
+        margin-top: 1rem;
+        margin-bottom: 6px;
     }
-    .premium-logo { font-size: 2.5rem; }
+    .premium-logo { 
+        font-size: 2.8rem;
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+    }
     .premium-text {
-        font-size: 2.3rem;
-        font-weight: 800;
+        font-size: 2.4rem;
+        font-weight: 900;
         letter-spacing: -0.5px;
-        background: linear-gradient(90deg, #EF4444, #3B82F6);
+        background: linear-gradient(90deg, #2563EB 0%, #7C3AED 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
@@ -120,15 +140,35 @@ st.markdown(
         text-align: center;
         color: #64748B !important;
         font-size: 0.95rem;
-        margin-bottom: 1.5rem;
+        font-weight: 500;
+        margin-bottom: 2rem;
     }
+
+    /* Nút Bấm Đẹp Mắt */
+    .stButton button {
+        border-radius: 12px !important;
+        font-weight: 600 !important;
+        transition: all 0.2s ease !important;
+    }
+    .stButton button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    }
+
+    /* Khung Đăng Nhập */
     .login-box {
-        padding: 20px;
-        border-radius: 12px;
-        background: #FFFDFB;
-        border: 1px solid #FFE4E6;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        padding: 28px;
+        border-radius: 20px;
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
         margin-bottom: 20px;
+    }
+
+    /* Ẩn bớt hiệu ứng thừa của Streamlit */
+    [data-testid="stHeaderHeading"] svg,
+    [data-testid="stElementContainer"] h1 svg {
+        display: none !important;
     }
     </style>
     """,
@@ -515,7 +555,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🎵 NHẠC CHILL THƯ GIÃN")
     
-    # Chỉ giữ duy nhất Lofi Study Chill
+    # Duy nhất bản nhạc Lofi Study Chill
     LOFI_URL = "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3"
     st.markdown("☕ **Lofi Study Chill**")
     st.audio(LOFI_URL, format="audio/mp3", loop=True)
