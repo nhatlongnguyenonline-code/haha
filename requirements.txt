@@ -1,9 +1,10 @@
 streamlit
 google-genai
-duckduckgo_search
-beautifulsoup4
-requests
-Pillow
-numpy
-bcrypt
 supabase
+bcrypt
+numpy
+beautifulsoup4
+duckduckgo_search
+pillow
+requests
+httpx
