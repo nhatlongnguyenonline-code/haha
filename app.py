@@ -133,7 +133,11 @@ except:
 
 if "ai_client" not in st.session_state:
     try: 
-        st.session_state.ai_client = genai.Client(api_key=API_KEY)
+        # SỬA LỖI: Thêm http_options chứa api-key vào header để ép SDK chạy đúng cổng Google AI Studio
+        st.session_state.ai_client = genai.Client(
+            api_key=API_KEY, 
+            http_options={'headers': {'x-goog-api-key': API_KEY}}
+        )
     except Exception as e: 
         st.error(f"Lỗi khởi tạo bộ não AI: {e}")
 
