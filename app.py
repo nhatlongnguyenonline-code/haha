@@ -27,7 +27,7 @@ warnings.filterwarnings("ignore")
 st.set_page_config(
     page_title="Trợ Lý AI & Cộng Đồng",
     page_icon="🐦‍🔥",
-    layout="centered",
+    layout="wide", # Sử dụng layout wide để không gian chat 2 cột rộng rãi hơn giống Zalo/Messenger
 )
 
 AI_MODEL = st.secrets.get("GEMINI_MODEL", "gemini-3.6-flash")
@@ -70,56 +70,20 @@ st.markdown(
         border: 1px solid #BFDBFE !important;
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.05) !important;
     }
-    [data-testid="stChatMessageAvatar"] {
-        border-radius: 50% !important;
-        border: 2px solid #F59E0B !important;
-        box-shadow: 0 2px 10px rgba(245, 158, 11, 0.3) !important;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        background: #FFFBEB;
-    }
-    .stChatInput {
-        position: fixed !important;
-        bottom: 25px !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        z-index: 999 !important;
-        width: 100% !important;
-        max-width: 650px !important;
-    }
-    .stChatInput [data-testid="stChatInputCurrentContainer"] {
-        border: 2px solid #3B82F6 !important;
-        border-radius: 28px !important;
-        background: #FFFFFF !important;
-        padding: 6px 14px !important;
-        box-shadow: 0 12px 35px rgba(59, 130, 246, 0.18) !important;
-        transition: all 0.3s ease !important;
-    }
-    .stChatInput [data-testid="stChatInputCurrentContainer"]:focus-within {
-        box-shadow: 0 12px 40px rgba(59, 130, 246, 0.35) !important;
-        border-color: #2563EB !important;
-    }
-    .stChatInput textarea {
-        color: #0F172A !important;
-        font-size: 0.98rem !important;
-        font-weight: 500 !important;
-    }
     .premium-title-container {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 14px;
-        margin-top: 1rem;
-        margin-bottom: 6px;
+        margin-top: 0.5rem;
+        margin-bottom: 4px;
     }
     .premium-logo { 
-        font-size: 2.8rem;
+        font-size: 2.5rem;
         filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
     }
     .premium-text {
-        font-size: 2.4rem;
+        font-size: 2.2rem;
         font-weight: 900;
         letter-spacing: -0.5px;
         background: linear-gradient(90deg, #EF4444 0%, #F59E0B 100%);
@@ -131,7 +95,7 @@ st.markdown(
         color: #64748B !important;
         font-size: 0.95rem;
         font-weight: 500;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.2rem;
     }
     .stButton button {
         border-radius: 12px !important;
@@ -143,12 +107,13 @@ st.markdown(
         box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
     }
     .login-box {
+        max-width: 500px;
+        margin: 40px auto;
         padding: 28px;
         border-radius: 20px;
         background: #FFFFFF;
         border: 1px solid #E2E8F0;
         box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-        margin-bottom: 20px;
     }
     .social-card {
         background: #FFFFFF;
@@ -194,10 +159,6 @@ st.markdown(
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         margin: 0 auto 10px auto;
         display: block;
-    }
-    [data-testid="stHeaderHeading"] svg,
-    [data-testid="stElementContainer"] h1 svg {
-        display: none !important;
     }
     </style>
     """,
@@ -727,7 +688,7 @@ st.markdown(
         <span class="premium-logo">🐦‍🔥</span>
         <span class="premium-text">TRỢ LÝ AI & CỘNG ĐỒNG</span>
     </div>
-    <div class="sub-title">Tích hợp AI Chatbot, Phòng Chat Chung & Tin Nhắn Riêng</div>
+    <div class="sub-title">Tích hợp AI Chatbot, Phòng Chat Chung & Tin Nhắn Riêng 1-1</div>
     """,
     unsafe_allow_html=True,
 )
@@ -738,7 +699,7 @@ st.markdown(
 tab_ai, tab_public, tab_dm = st.tabs([
     "🤖 Chat Với AI", 
     "💬 Chat Cộng Đồng",
-    "🔒 Tin Nhắn Riêng"
+    "🔒 Tin Nhắn Riêng Tư (Messenger Style)"
 ])
 
 # ------------------------------------------------------------
@@ -993,32 +954,123 @@ with tab_public:
         st.error(f"❌ Lỗi tải tin nhắn cộng đồng: {safe_error_message(exc)}")
 
 # ------------------------------------------------------------
-# TAB 3: TIN NHẮN RIÊNG (DIRECT MESSAGES)
+# TAB 3: TIN NHẮN RIÊNG 1-1 (MESSENGER / ZALO STYLE)
 # ------------------------------------------------------------
 with tab_dm:
-    st.subheader("🔒 Nhắn Tin Riêng Tư 1-1")
-    st.caption("Trò chuyện bảo mật giữa bạn và một thành viên khác trong hệ thống.")
-
     try:
-        users_res = supabase.table("users").select("username, display_name").execute()
+        users_res = supabase.table("users").select("username, display_name, avatar_url").execute()
         all_users = users_res.data or []
-        other_users = [u["username"] for u in all_users if u["username"] != u_id]
+        other_users = [u for u in all_users if u["username"] != u_id]
     except Exception:
         other_users = []
 
     if not other_users:
-        st.info("Chưa có người dùng nào khác trong hệ thống để nhắn tin.")
+        st.info("Chưa có thành viên nào khác trong hệ thống để nhắn tin.")
     else:
-        selected_receiver = st.selectbox("Chọn người bạn muốn nhắn tin:", other_users, key="dm_receiver_select")
+        # Chia bố cục 2 cột giống Messenger/Zalo: Cột trái là danh sách đoạn chat, Cột phải là khung nội dung tin nhắn
+        col_list, col_chat = st.columns([1, 2.8], gap="medium")
 
-        if selected_receiver:
-            st.markdown(f"--- Đang trò chuyện với **{selected_receiver}** ---")
+        with col_list:
+            st.markdown("### 👥 Đoạn chat")
             
-            st_autorefresh(interval=3000, key="dm_chat_refresh")
+            # Lưu trữ user đang chọn trò chuyện trong session_state
+            if "active_dm_user" not in st.session_state:
+                st.session_state["active_dm_user"] = other_users[0]["username"]
 
-            with st.form(f"dm_form_{selected_receiver}", clear_on_submit=True):
-                dm_input = st.text_input(f"Nhập tin nhắn gửi {selected_receiver}...", key="dm_msg_input")
-                dm_send = st.form_submit_button("📩 Gửi Tin Nhắn Riêng", type="primary")
+            # Hiển thị danh sách các user có thể click vào để chọn
+            for user_obj in other_users:
+                u_username = user_obj["username"]
+                u_dname = user_obj.get("display_name") or u_username
+                u_ava = user_obj.get("avatar_url") or DEFAULT_AVATAR
+                
+                is_selected = (st.session_state["active_dm_user"] == u_username)
+                bg_highlight = "#E0F2FE" if is_selected else "#FFFFFF"
+                border_highlight = "#0284C7" if is_selected else "#E2E8F0"
+
+                # Nút chọn hội thoại
+                if st.button(f"  {u_dname}", key=f"select_user_{u_username}", use_container_width=True):
+                    st.session_state["active_dm_user"] = u_username
+                    st.rerun()
+
+        with col_chat:
+            selected_receiver = st.session_state.get("active_dm_user", other_users[0]["username"])
+            
+            # Lấy thông tin hiển thị của người nhận hiện tại
+            receiver_info = next((u for u in other_users if u["username"] == selected_receiver), {"display_name": selected_receiver, "avatar_url": DEFAULT_AVATAR})
+            rec_dname = receiver_info.get("display_name") or selected_receiver
+            rec_ava = receiver_info.get("avatar_url") or DEFAULT_AVATAR
+
+            # Header khung chat riêng
+            st.markdown(
+                f"""
+                <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                    <img src="{rec_ava}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #3B82F6;" />
+                    <div>
+                        <div style="font-weight: 700; color: #0F172A; font-size: 1.05rem;">{rec_dname}</div>
+                        <div style="font-size: 0.8rem; color: #10B981;">● Đang hoạt động</div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            # Tự động làm mới mỗi 3 giây để cập nhật tin nhắn mới từ người bên kia
+            st_autorefresh(interval=3000, key="messenger_dm_refresh")
+
+            # Khu vực hiển thị tin nhắn (Scrollable / List)
+            chat_container = st.container(height=420)
+            with chat_container:
+                try:
+                    res_dm = (
+                        supabase.table("private_messages")
+                        .select("*")
+                        .or_(f"and(sender.eq.{u_id},receiver.eq.{selected_receiver}),and(sender.eq.{selected_receiver},receiver.eq.{u_id})")
+                        .order("created_at", desc=False)
+                        .execute()
+                    )
+                    dm_list = res_dm.data or []
+
+                    if not dm_list:
+                        st.info(f"Chưa có tin nhắn nào với {rec_dname}. Hãy gửi lời chào đầu tiên!")
+                    else:
+                        for msg in dm_list:
+                            m_sender = msg.get("sender")
+                            m_text = msg.get("message")
+                            m_time = msg.get("created_at", "")[11:16] # Chỉ lấy giờ:phút cho gọn giống messenger
+                            m_avatar = msg.get("avatar_url") or DEFAULT_AVATAR
+
+                            is_me = (m_sender == u_id)
+                            # Giao diện bong bóng chat phong cách Messenger: Mình ở phải (xanh), Người kia ở trái (trắng)
+                            flex_dir = "row-reverse" if is_me else "row"
+                            bg_bubble = "#0084FF" if is_me else "#E4E6EB"
+                            text_color = "#FFFFFF" if is_me else "#050505"
+                            align_text = "right" if is_me else "left"
+
+                            st.markdown(
+                                f"""
+                                <div style="display: flex; flex-direction: {flex_dir}; gap: 8px; margin-bottom: 10px; align-items: flex-end;">
+                                    <img src="{m_avatar}" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;" />
+                                    <div style="max-width: 65%;">
+                                        <div style="background: {bg_bubble}; color: {text_color}; padding: 10px 14px; border-radius: 18px; font-size: 0.95rem; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                                            {m_text}
+                                        </div>
+                                        <div style="font-size: 0.7rem; color: #94A3B8; margin-top: 2px; text-align: {align_text};">{m_time}</div>
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+                except Exception as exc:
+                    st.error(f"❌ Lỗi tải tin nhắn: {safe_error_message(exc)}")
+
+            # Form nhập và gửi tin nhắn ở đáy khung chat
+            with st.form(f"messenger_form_{selected_receiver}", clear_on_submit=True):
+                col_input, col_send = st.columns([5, 1])
+                with col_input:
+                    dm_input = st.text_input("Nhập tin nhắn...", placeholder=f"Nhắn gì đó cho {rec_dname}...", label_visibility="collapsed", key="messenger_input_box")
+                with col_send:
+                    dm_send = st.form_submit_button("Gửi ➔", use_container_width=True, type="primary")
+
                 if dm_send and dm_input.strip():
                     try:
                         supabase.table("private_messages").insert({
@@ -1029,43 +1081,4 @@ with tab_dm:
                         }).execute()
                         st.rerun()
                     except Exception as exc:
-                        st.error(f"❌ Không gửi được tin nhắn: {safe_error_message(exc)}")
-
-            st.markdown("#### 📜 Lịch sử hội thoại")
-            try:
-                res_dm = (
-                    supabase.table("private_messages")
-                    .select("*")
-                    .or_(f"and(sender.eq.{u_id},receiver.eq.{selected_receiver}),and(sender.eq.{selected_receiver},receiver.eq.{u_id})")
-                    .order("created_at", desc=False)
-                    .execute()
-                )
-                dm_list = res_dm.data or []
-
-                if not dm_list:
-                    st.info(f"Chưa có tin nhắn nào giữa bạn và {selected_receiver}. Hãy bắt đầu cuộc trò chuyện!")
-                else:
-                    for msg in dm_list:
-                        m_sender = msg.get("sender")
-                        m_text = msg.get("message")
-                        m_time = msg.get("created_at", "")[:16].replace("T", " ")
-                        m_avatar = msg.get("avatar_url") or DEFAULT_AVATAR
-
-                        is_me = (m_sender == u_id)
-                        bg_color = "#EFF6FF" if is_me else "#FFFFFF"
-                        border_color = "#BFDBFE" if is_me else "#E2E8F0"
-
-                        st.markdown(
-                            f"""
-                            <div style="display: flex; flex-direction: {'row-reverse' if is_me else 'row'}; gap: 10px; margin-bottom: 12px; align-items: flex-start;">
-                                <img src="{m_avatar}" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #3B82F6;" />
-                                <div style="max-width: 70%; background: {bg_color}; border: 1px solid {border_color}; padding: 10px 14px; border-radius: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
-                                    <div style="font-size: 0.75rem; color: #64748B; margin-bottom: 2px;">{m_sender} • {m_time}</div>
-                                    <div style="color: #1E293B; font-size: 0.95rem; word-break: break-word;">{m_text}</div>
-                                </div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
-            except Exception as exc:
-                st.error(f"❌ Lỗi tải tin nhắn riêng: {safe_error_message(exc)}")
+                        st.error(f"❌ Không gửi được: {safe_error_message(exc)}")
