@@ -1013,11 +1013,17 @@ with tab_dm:
                     res_dm = (
                         supabase.table("private_messages")
                         .select("*")
-                        .or_(f"and(sender.eq.{u_id},receiver.eq.{selected_receiver}),and(sender.eq.{selected_receiver},receiver.eq.{u_id})")
+                        .or_(f"sender.eq.{u_id},receiver.eq.{u_id}")
                         .order("created_at", desc=False)
                         .execute()
                     )
-                    dm_list = res_dm.data or []
+                    raw_dm_list = res_dm.data or []
+                    
+                    dm_list = [
+                        m for m in raw_dm_list 
+                        if (m.get("sender") == u_id and m.get("receiver") == selected_receiver) or 
+                           (m.get("sender") == selected_receiver and m.get("receiver") == u_id)
+                    ]
 
                     if not dm_list:
                         st.info(f"Chưa có tin nhắn nào với {rec_dname}. Hãy gửi lời chào đầu tiên!")
