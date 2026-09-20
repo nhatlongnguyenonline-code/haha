@@ -1044,21 +1044,27 @@ with tab_dm:
             except Exception as exc:
                 st.error(f"❌ Lỗi tải tin nhắn: {safe_error_message(exc)}")
 
-        with st.form(f"messenger_form_{selected_receiver}", clear_on_submit=True):
-            col_input, col_send = st.columns([5, 1])
-            with col_input:
-                dm_input = st.text_input("Nhập tin nhắn...", placeholder=f"Nhắn gì đó cho {rec_dname}...", label_visibility="collapsed", key="messenger_input_box")
-            with col_send:
-                dm_send = st.form_submit_button("Gửi ➔", use_container_width=True, type="primary")
+        # Sử dụng text_input thông thường thay vì form để tránh xung đột state khi auto-refresh
+        col_input, col_send = st.columns([5, 1])
+        with col_input:
+            dm_input = st.text_input(
+                "Nhập tin nhắn...", 
+                placeholder=f"Nhắn gì đó cho {rec_dname}...", 
+                label_visibility="collapsed", 
+                key=f"dm_input_text_{selected_receiver}"
+            )
+        with col_send:
+            st.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
+            dm_send_btn = st.button("Gửi ➔", use_container_width=True, type="primary", key=f"dm_send_btn_{selected_receiver}")
 
-            if dm_send and dm_input.strip():
-                try:
-                    supabase.table("private_messages").insert({
-                        "sender": u_id,
-                        "receiver": selected_receiver,
-                        "message": dm_input.strip(),
-                        "avatar_url": avatar_url,
-                    }).execute()
-                    st.rerun()
-                except Exception as exc:
-                    st.error(f"❌ Không gửi được: {safe_error_message(exc)}")
+        if dm_send_btn and dm_input and dm_input.strip():
+            try:
+                supabase.table("private_messages").insert({
+                    "sender": u_id,
+                    "receiver": selected_receiver,
+                    "message": dm_input.strip(),
+                    "avatar_url": avatar_url,
+                }).execute()
+                st.rerun()
+            except Exception as exc:
+                st.error(f"❌ Không gửi được: {safe_error_message(exc)}")
