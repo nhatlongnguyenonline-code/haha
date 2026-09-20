@@ -24,7 +24,7 @@ warnings.filterwarnings("ignore")
 # CẤU HÌNH TRANG STREAMLIT
 # ============================================================
 sb.set_page_config(
-    page_title="Trợ Lý AI & Zalo Style Chat",
+    page_title="Trợ Lý AI Tra Cứu Internet & Zalo Style",
     page_icon="💬",
     layout="wide",
 )
@@ -45,7 +45,7 @@ sb.markdown(
     """
     <style>
     .main {
-        background-color: #F0F2F5 !important;
+        background-color: #FFFFFF !important;
     }
     [data-testid="sbSidebar"] {
         background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
@@ -59,9 +59,9 @@ sb.markdown(
     .premium-title-container {
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         gap: 12px;
-        margin-top: 0.2rem;
+        margin-top: 0.5rem;
         margin-bottom: 2px;
     }
     .premium-logo { 
@@ -70,16 +70,15 @@ sb.markdown(
     .premium-text {
         font-size: 2rem;
         font-weight: 800;
-        background: linear-gradient(90deg, #0068FF 0%, #0099FF 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #1E293B;
     }
     .sub-title {
-        text-align: center;
+        text-align: left;
         color: #64748B !important;
         font-size: 0.9rem;
         font-weight: 500;
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
+        margin-left: 3.5rem;
     }
     .sbButton button {
         border-radius: 10px !important;
@@ -657,15 +656,15 @@ def extract_web_content(url):
         return ""
 
 # ============================================================
-# TITLE
+# TITLE (ĐÃ CẬP NHẬT THEO MẪU MỚI & BIỂU TƯỢNG PHƯỢNG HOÀNG 🐦‍🔥)
 # ============================================================
 sb.markdown(
     """
     <div class="premium-title-container">
-        <span class="premium-logo">💬</span>
-        <span class="premium-text">TRỢ LÝ AI & KẾT NỐI ZALO</span>
+        <span class="premium-logo">🐦‍🔥</span>
+        <span class="premium-text">TRỢ LÝ AI TRA CỨU INTERNET</span>
     </div>
-    <div class="sub-title">Chat AI Thông Minh, Phòng Chat Cộng Đồng & Kết Bạn Nhắn Tin Riêng Tư</div>
+    <div class="sub-title">🚀 Phiên bản chatbot thông minh chạy trên máy chủ độc lập Streamlit Cloud v2026</div>
     """,
     unsafe_allow_html=True,
 )
@@ -683,14 +682,14 @@ tab_ai, tab_public, tab_dm = sb.tabs([
 # TAB 1: CHAT VỚI AI
 # ------------------------------------------------------------
 with tab_ai:
-    # 1. Hiển thị lịch sử chat trước tiên để avatar phượng hoàng hiện đúng vị trí
+    # 1. Hiển thị lịch sử chat trước tiên
     for message in sb.session_state[pages_key][current_page]:
         current_avatar = avatar_url if message["role"] == "user" else AI_AVATAR_EMOJI
         with sb.chat_message(message["role"], avatar=current_avatar):
             sb.markdown(message["content"])
 
-    # 2. Khung chat_input đặt ở dưới cùng
-    if user_input := sb.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
+    # 2. Khung chat_input đặt ở dưới cùng của tab
+    if user_input := sb.chat_input("Nhập câu hỏi của bạn vào đây..."):
         user_input = user_input.strip()
         if not user_input:
             sb.stop()
