@@ -694,13 +694,15 @@ tab_ai, tab_public, tab_dm = sb.tabs([
 # TAB 1: CHAT VỚI AI
 # ------------------------------------------------------------
 with tab_ai:
-    # 1. Hiển thị lịch sử chat trước tiên
-    for message in sb.session_state[pages_key][current_page]:
-        current_avatar = avatar_url if message["role"] == "user" else AI_AVATAR_EMOJI
-        with sb.chat_message(message["role"], avatar=current_avatar):
-            sb.markdown(message["content"])
+    # 1. Hiển thị lịch sử chat trong container cuộn để tối ưu không gian
+    chat_history_container = sb.container(height=520)
+    with chat_history_container:
+        for message in sb.session_state[pages_key][current_page]:
+            current_avatar = avatar_url if message["role"] == "user" else AI_AVATAR_EMOJI
+            with sb.chat_message(message["role"], avatar=current_avatar):
+                sb.markdown(message["content"])
 
-    # 2. Thanh nhập câu hỏi nằm độc lập ở cuối cùng để Streamlit tự động ghim đáy màn hình
+    # 2. st.chat_input được ghim cố định ở sát đáy màn hình
     if user_input := sb.chat_input("Nhập câu hỏi của bạn vào đây..."):
         user_input = user_input.strip()
         if not user_input:
@@ -709,8 +711,9 @@ with tab_ai:
         current_history = sb.session_state[pages_key][current_page]
         current_history.append({"role": "user", "content": user_input})
 
-        with sb.chat_message("user", avatar=avatar_url):
-            sb.markdown(user_input)
+        with chat_history_container:
+            with sb.chat_message("user", avatar=avatar_url):
+                sb.markdown(user_input)
 
         cache_hit = False
         cached_answer = ""
@@ -730,9 +733,10 @@ with tab_ai:
                     cached_answer = best_match["answer"]
 
         if cache_hit:
-            with sb.chat_message("assistant", avatar=AI_AVATAR_EMOJI):
-                sb.markdown(cached_answer)
-                sb.caption(f"⚡ Phản hồi từ semantic cache ({CACHE_THRESHOLD:.2f})")
+            with chat_history_container:
+                with sb.chat_message("assistant", avatar=AI_AVATAR_EMOJI):
+                    sb.markdown(cached_answer)
+                    sb.caption(f"⚡ Phản hồi từ semantic cache ({CACHE_THRESHOLD:.2f})")
 
             current_history.append({"role": "assistant", "content": cached_answer})
             upload_single_page_supabase(u_id, current_page, current_history)
@@ -779,72 +783,73 @@ with tab_ai:
         else:
             prompt_payload = user_input
 
-        with sb.chat_message("assistant", avatar=AI_AVATAR_EMOJI):
-            try:
-                config = types.GenerateContentConfig(
-                    temperature=float(creativity),
-                )
-
-                if uploaded_file:
-                    uploaded_file.seek(0)
-                    image = Image.open(uploaded_file).convert("RGB")
-                    response_stream = sb.session_state.ai_client.models.generate_content_stream(
-                        model=AI_MODEL,
-                        contents=[image, prompt_payload],
-                        config=config,
+        with chat_history_container:
+            with sb.chat_message("assistant", avatar=AI_AVATAR_EMOJI):
+                try:
+                    config = types.GenerateContentConfig(
+                        temperature=float(creativity),
                     )
-                else:
-                    chat_session_key = f"ai_session_{u_id}_{current_page}"
-                    if chat_session_key not in sb.session_state:
-                        sb.session_state[chat_session_key] = sb.session_state.ai_client.chats.create(
+
+                    if uploaded_file:
+                        uploaded_file.seek(0)
+                        image = Image.open(uploaded_file).convert("RGB")
+                        response_stream = sb.session_state.ai_client.models.generate_content_stream(
                             model=AI_MODEL,
+                            contents=[image, prompt_payload],
                             config=config,
                         )
-                    response_stream = sb.session_state[chat_session_key].send_message_stream(
-                        message=prompt_payload,
-                        config=config,
-                    )
+                    else:
+                        chat_session_key = f"ai_session_{u_id}_{current_page}"
+                        if chat_session_key not in sb.session_state:
+                            sb.session_state[chat_session_key] = sb.session_state.ai_client.chats.create(
+                                model=AI_MODEL,
+                                config=config,
+                            )
+                        response_stream = sb.session_state[chat_session_key].send_message_stream(
+                            message=prompt_payload,
+                            config=config,
+                        )
 
-                def response_generator():
-                    for chunk in response_stream:
-                        text = getattr(chunk, "text", None)
-                        if text:
-                            yield text
+                    def response_generator():
+                        for chunk in response_stream:
+                            text = getattr(chunk, "text", None)
+                            if text:
+                                yield text
 
-                ai_response = sb.write_stream(response_generator())
-                ai_response = ai_response if isinstance(ai_response, str) else str(ai_response or "")
+                    ai_response = sb.write_stream(response_generator())
+                    ai_response = ai_response if isinstance(ai_response, str) else str(ai_response or "")
 
-                if not ai_response.strip():
-                    ai_response = "⚠️ AI không trả về nội dung. Bạn hãy thử lại."
-                    sb.warning(ai_response)
+                    if not ai_response.strip():
+                        ai_response = "⚠️ AI không trả về nội dung. Bạn hãy thử lại."
+                        sb.warning(ai_response)
 
-                if sources:
-                    source_text = "\n\n---\n🌐 **Nguồn tham khảo:**\n" + "\n".join(
-                        f"- {src}" for src in sources
-                    )
-                    sb.markdown(source_text)
-                    ai_response += source_text
+                    if sources:
+                        source_text = "\n\n---\n🌐 **Nguồn tham khảo:**\n" + "\n".join(
+                            f"- {src}" for src in sources
+                        )
+                        sb.markdown(source_text)
+                        ai_response += source_text
 
-                current_history.append({"role": "assistant", "content": ai_response})
-                upload_single_page_supabase(u_id, current_page, current_history)
+                    current_history.append({"role": "assistant", "content": ai_response})
+                    upload_single_page_supabase(u_id, current_page, current_history)
 
-                if not uploaded_file and not sources:
-                    new_embedding = get_embedding(user_input)
-                    if new_embedding is not None:
-                        sb.session_state[cache_key].append({
-                            "embedding": new_embedding,
-                            "question": user_input,
-                            "answer": ai_response,
-                            "created_at": time.time(),
-                        })
-                        sb.session_state[cache_key] = sb.session_state[cache_key][-100:]
+                    if not uploaded_file and not sources:
+                        new_embedding = get_embedding(user_input)
+                        if new_embedding is not None:
+                            sb.session_state[cache_key].append({
+                                "embedding": new_embedding,
+                                "question": user_input,
+                                "answer": ai_response,
+                                "created_at": time.time(),
+                            })
+                            sb.session_state[cache_key] = sb.session_state[cache_key][-100:]
 
-            except Exception as exc:
-                error_text = safe_error_message(exc)
-                error_message = f"❌ Hệ thống AI gặp lỗi: {error_text}"
-                sb.error(error_message)
-                if current_history and current_history[-1].get("role") == "user":
-                    current_history.pop()
+                except Exception as exc:
+                    error_text = safe_error_message(exc)
+                    error_message = f"❌ Hệ thống AI gặp lỗi: {error_text}"
+                    sb.error(error_message)
+                    if current_history and current_history[-1].get("role") == "user":
+                        current_history.pop()
 
 # ------------------------------------------------------------
 # TAB 2: CHAT CỘNG ĐỒNG
