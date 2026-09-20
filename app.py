@@ -234,7 +234,6 @@ if "global_token_registry" not in st.session_state:
 url_token = st.query_params.get("token")
 logged_in_user = None
 
-# Ưu tiên token đang có trong session hiện tại.
 if url_token:
     logged_in_user = st.session_state.global_token_registry.get(url_token)
 
@@ -515,12 +514,16 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### 🎵 NHẠC CHILL THƯ GIÃN")
+    
+    # Danh sách MP3 ổn định được kết nối từ kho CDN của Free Sound / Archive
     PLAYLIST = {
         "☕ Lofi Study Chill": "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3",
-        "🌧️ Mưa & Lofi Beats": "https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a7315b.mp3",
-        "🌌 Piano Thư Giãn": "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3",
-        "🎸 Acoustic Guitar Gentle": "https://cdn.pixabay.com/download/audio/2021/09/06/audio_78f16b24a5.mp3",
+        "🌧️ Tiếng Mưa Rào Thư Giãn": "https://www.soundjay.com/nature/rain-01.mp3",
+        "🌌 Piano Nhẹ Nhàng Em Dịu": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+        "🎸 Jazz Cafe Acoustic": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+        "🌿 Sóng Biển & Gió Nhẹ": "https://www.soundjay.com/nature/ocean-wave-1.mp3",
     }
+    
     selected_song = st.selectbox(
         "Chọn bản nhạc yêu thích:",
         options=list(PLAYLIST.keys()),
@@ -794,8 +797,6 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
             current_history.append({"role": "assistant", "content": ai_response})
             upload_single_page_supabase(u_id, current_page, current_history)
 
-            # Lưu semantic cache, nhưng không lưu câu trả lời có web context để tránh
-            # trả lại dữ liệu thời gian thực đã cũ.
             if not uploaded_file and not sources:
                 new_embedding = get_embedding(user_input)
                 if new_embedding is not None:
@@ -805,13 +806,11 @@ if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích 
                         "answer": ai_response,
                         "created_at": time.time(),
                     })
-                    # Giới hạn RAM/session cache.
                     st.session_state[cache_key] = st.session_state[cache_key][-100:]
 
         except Exception as exc:
             error_text = safe_error_message(exc)
             error_message = f"❌ Hệ thống AI gặp lỗi: {error_text}"
             st.error(error_message)
-            # Không lưu thông báo lỗi như câu trả lời của AI.
             if current_history and current_history[-1].get("role") == "user":
                 current_history.pop()
