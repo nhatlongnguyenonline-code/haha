@@ -39,23 +39,26 @@ DEFAULT_AVATAR = "https://www.w3schools.com/howto/img_avatar.png"
 AI_AVATAR_EMOJI = "🐦‍🔥"
 
 # ============================================================
-# GIAO DIỆN & NÂNG CẤP ĐỒ HỌA (ZALO STYLE)
+# GIAO DIỆN & HIỆU ỨNG GRADIENT CAO CẤP (ZALO & AI STYLE)
 # ============================================================
 sb.markdown(
     """
     <style>
     .main {
-        background-color: #FFFFFF !important;
+        background-color: #F8FAFC !important;
     }
     [data-testid="sbSidebar"] {
-        background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
+        background: linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%) !important;
         border-right: 1px solid #E2E8F0 !important;
     }
     [data-testid="sbChatMessage"] {
         border-radius: 16px !important;
         margin-bottom: 14px !important;
         padding: 14px 18px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
     }
+    
+    /* Hiệu ứng Gradient cho tiêu đề chính */
     .premium-title-container {
         display: flex;
         align-items: center;
@@ -65,44 +68,53 @@ sb.markdown(
         margin-bottom: 2px;
     }
     .premium-logo { 
-        font-size: 2.2rem;
+        font-size: 2.4rem;
     }
-    .premium-text {
-        font-size: 2rem;
+    .premium-gradient-text {
+        font-size: 2.1rem;
         font-weight: 800;
-        color: #1E293B;
+        background: linear-gradient(135deg, #FF4B2B 0%, #FF416C 50%, #0068FF 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.5px;
     }
     .sub-title {
         text-align: left;
         color: #64748B !important;
-        font-size: 0.9rem;
+        font-size: 0.95rem;
         font-weight: 500;
         margin-bottom: 1.5rem;
-        margin-left: 3.5rem;
+        margin-left: 3.8rem;
     }
     .sbButton button {
-        border-radius: 10px !important;
+        border-radius: 12px !important;
         font-weight: 600 !important;
+        transition: all 0.2s ease-in-out;
     }
     .login-box {
         max-width: 480px;
         margin: 40px auto;
-        padding: 26px;
-        border-radius: 18px;
+        padding: 30px;
+        border-radius: 20px;
         background: #FFFFFF;
         border: 1px solid #E2E8F0;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.06);
     }
     .social-card {
         background: #FFFFFF;
         border: 1px solid #E2E8F0;
-        border-radius: 12px;
-        padding: 12px 16px;
-        margin-bottom: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        border-radius: 14px;
+        padding: 14px 18px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.02);
         display: flex;
         gap: 12px;
         align-items: center;
+        transition: transform 0.15s ease;
+    }
+    .social-card:hover {
+        border-color: #CBD5E1;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.04);
     }
     .social-user {
         font-weight: 700;
@@ -115,8 +127,8 @@ sb.markdown(
         margin-left: auto;
     }
     .user-avatar-img {
-        width: 40px;
-        height: 40px;
+        width: 42px;
+        height: 42px;
         border-radius: 50%;
         object-fit: cover !important;
         border: 2px solid #0068FF;
@@ -124,16 +136,16 @@ sb.markdown(
     }
     .profile-card {
         text-align: center;
-        padding: 8px 0;
+        padding: 12px 0;
     }
     .profile-avatar {
-        width: 80px;
-        height: 80px;
+        width: 84px;
+        height: 84px;
         border-radius: 50%;
         object-fit: cover !important;
         border: 3px solid #0068FF;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-        margin: 0 auto 8px auto;
+        box-shadow: 0 6px 15px rgba(0,104,255,0.15);
+        margin: 0 auto 10px auto;
         display: block;
     }
     </style>
@@ -656,13 +668,13 @@ def extract_web_content(url):
         return ""
 
 # ============================================================
-# TITLE (ĐÃ CẬP NHẬT THEO MẪU MỚI & BIỂU TƯỢNG PHƯỢNG HOÀNG 🐦‍🔥)
+# TITLE (ĐÃ TÍCH HỢP HIỆU ỨNG GRADIENT & PHƯỢNG HOÀNG 🐦‍🔥)
 # ============================================================
 sb.markdown(
     """
     <div class="premium-title-container">
         <span class="premium-logo">🐦‍🔥</span>
-        <span class="premium-text">TRỢ LÝ AI TRA CỨU INTERNET</span>
+        <span class="premium-gradient-text">TRỢ LÝ AI TRA CỨU INTERNET</span>
     </div>
     <div class="sub-title">🚀 Phiên bản chatbot thông minh chạy trên máy chủ độc lập Streamlit Cloud v2026</div>
     """,
