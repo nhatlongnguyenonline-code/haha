@@ -25,7 +25,7 @@ warnings.filterwarnings("ignore")
 # ============================================================
 sb.set_page_config(
     page_title="Trợ Lý AI Tra Cứu Internet & Zalo Style",
-    page_icon="💬",
+    page_icon="🐦‍🔥",
     layout="wide",
 )
 
