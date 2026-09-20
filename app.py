@@ -967,111 +967,98 @@ with tab_dm:
     if not other_users:
         st.info("Chưa có thành viên nào khác trong hệ thống để nhắn tin.")
     else:
-        col_list, col_chat = st.columns([1, 2.8], gap="medium")
+        st.markdown("### 💬 Chọn người cần nhắn tin riêng")
+        
+        user_options = { (u.get("display_name") or u["username"]): u["username"] for u in other_users }
+        selected_dname = st.selectbox("Chọn thành viên:", list(user_options.keys()), key="select_dm_user_box")
+        selected_receiver = user_options[selected_dname]
 
-        with col_list:
-            st.markdown("### 👥 Đoạn chat")
-            
-            if "active_dm_user" not in st.session_state:
-                st.session_state["active_dm_user"] = other_users[0]["username"]
+        st.markdown("---")
 
-            for user_obj in other_users:
-                u_username = user_obj["username"]
-                u_dname = user_obj.get("display_name") or u_username
-                
-                is_selected = (st.session_state["active_dm_user"] == u_username)
+        receiver_info = next((u for u in other_users if u["username"] == selected_receiver), {"display_name": selected_receiver, "avatar_url": DEFAULT_AVATAR})
+        rec_dname = receiver_info.get("display_name") or selected_receiver
+        rec_ava = receiver_info.get("avatar_url") or DEFAULT_AVATAR
 
-                if st.button(f"  {u_dname}", key=f"select_user_{u_username}", use_container_width=True):
-                    st.session_state["active_dm_user"] = u_username
-                    st.rerun()
-
-        with col_chat:
-            selected_receiver = st.session_state.get("active_dm_user", other_users[0]["username"])
-            
-            receiver_info = next((u for u in other_users if u["username"] == selected_receiver), {"display_name": selected_receiver, "avatar_url": DEFAULT_AVATAR})
-            rec_dname = receiver_info.get("display_name") or selected_receiver
-            rec_ava = receiver_info.get("avatar_url") or DEFAULT_AVATAR
-
-            st.markdown(
-                f"""
-                <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
-                    <img src="{rec_ava}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #3B82F6;" />
-                    <div>
-                        <div style="font-weight: 700; color: #0F172A; font-size: 1.05rem;">{rec_dname}</div>
-                        <div style="font-size: 0.8rem; color: #10B981;">● Đang hoạt động</div>
-                    </div>
+        st.markdown(
+            f"""
+            <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                <img src="{rec_ava}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #3B82F6;" />
+                <div>
+                    <div style="font-weight: 700; color: #0F172A; font-size: 1.05rem;">{rec_dname}</div>
+                    <div style="font-size: 0.8rem; color: #10B981;">● Đang hoạt động</div>
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-            st_autorefresh(interval=3000, key="messenger_dm_refresh")
+        st_autorefresh(interval=3000, key="messenger_dm_refresh")
 
-            chat_container = st.container(height=420)
-            with chat_container:
-                try:
-                    res_dm = (
-                        supabase.table("private_messages")
-                        .select("*")
-                        .or_(f"sender.eq.{u_id},receiver.eq.{u_id}")
-                        .order("created_at", desc=False)
-                        .execute()
-                    )
-                    raw_dm_list = res_dm.data or []
-                    
-                    dm_list = [
-                        m for m in raw_dm_list 
-                        if (m.get("sender") == u_id and m.get("receiver") == selected_receiver) or 
-                           (m.get("sender") == selected_receiver and m.get("receiver") == u_id)
-                    ]
+        chat_container = st.container(height=420)
+        with chat_container:
+            try:
+                res_dm = (
+                    supabase.table("private_messages")
+                    .select("*")
+                    .or_(f"sender.eq.{u_id},receiver.eq.{u_id}")
+                    .order("created_at", desc=False)
+                    .execute()
+                )
+                raw_dm_list = res_dm.data or []
+                
+                dm_list = [
+                    m for m in raw_dm_list 
+                    if (m.get("sender") == u_id and m.get("receiver") == selected_receiver) or 
+                       (m.get("sender") == selected_receiver and m.get("receiver") == u_id)
+                ]
 
-                    if not dm_list:
-                        st.info(f"Chưa có tin nhắn nào với {rec_dname}. Hãy gửi lời chào đầu tiên!")
-                    else:
-                        for msg in dm_list:
-                            m_sender = msg.get("sender")
-                            m_text = msg.get("message")
-                            m_time = msg.get("created_at", "")[11:16]
-                            m_avatar = msg.get("avatar_url") or DEFAULT_AVATAR
+                if not dm_list:
+                    st.info(f"Chưa có tin nhắn nào với {rec_dname}. Hãy gửi lời chào đầu tiên!")
+                else:
+                    for msg in dm_list:
+                        m_sender = msg.get("sender")
+                        m_text = msg.get("message")
+                        m_time = msg.get("created_at", "")[11:16]
+                        m_avatar = msg.get("avatar_url") or DEFAULT_AVATAR
 
-                            is_me = (m_sender == u_id)
-                            flex_dir = "row-reverse" if is_me else "row"
-                            bg_bubble = "#0084FF" if is_me else "#E4E6EB"
-                            text_color = "#FFFFFF" if is_me else "#050505"
-                            align_text = "right" if is_me else "left"
+                        is_me = (m_sender == u_id)
+                        flex_dir = "row-reverse" if is_me else "row"
+                        bg_bubble = "#0084FF" if is_me else "#E4E6EB"
+                        text_color = "#FFFFFF" if is_me else "#050505"
+                        align_text = "right" if is_me else "left"
 
-                            st.markdown(
-                                f"""
-                                <div style="display: flex; flex-direction: {flex_dir}; gap: 8px; margin-bottom: 10px; align-items: flex-end;">
-                                    <img src="{m_avatar}" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;" />
-                                    <div style="max-width: 65%;">
-                                        <div style="background: {bg_bubble}; color: {text_color}; padding: 10px 14px; border-radius: 18px; font-size: 0.95rem; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                                            {m_text}
-                                        </div>
-                                        <div style="font-size: 0.7rem; color: #94A3B8; margin-top: 2px; text-align: {align_text};">{m_time}</div>
+                        st.markdown(
+                            f"""
+                            <div style="display: flex; flex-direction: {flex_dir}; gap: 8px; margin-bottom: 10px; align-items: flex-end;">
+                                <img src="{m_avatar}" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;" />
+                                <div style="max-width: 65%;">
+                                    <div style="background: {bg_bubble}; color: {text_color}; padding: 10px 14px; border-radius: 18px; font-size: 0.95rem; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                                        {m_text}
                                     </div>
+                                    <div style="font-size: 0.7rem; color: #94A3B8; margin-top: 2px; text-align: {align_text};">{m_time}</div>
                                 </div>
-                                """,
-                                unsafe_allow_html=True,
-                            )
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+            except Exception as exc:
+                st.error(f"❌ Lỗi tải tin nhắn: {safe_error_message(exc)}")
+
+        with st.form(f"messenger_form_{selected_receiver}", clear_on_submit=True):
+            col_input, col_send = st.columns([5, 1])
+            with col_input:
+                dm_input = st.text_input("Nhập tin nhắn...", placeholder=f"Nhắn gì đó cho {rec_dname}...", label_visibility="collapsed", key="messenger_input_box")
+            with col_send:
+                dm_send = st.form_submit_button("Gửi ➔", use_container_width=True, type="primary")
+
+            if dm_send and dm_input.strip():
+                try:
+                    supabase.table("private_messages").insert({
+                        "sender": u_id,
+                        "receiver": selected_receiver,
+                        "message": dm_input.strip(),
+                        "avatar_url": avatar_url,
+                    }).execute()
+                    st.rerun()
                 except Exception as exc:
-                    st.error(f"❌ Lỗi tải tin nhắn: {safe_error_message(exc)}")
-
-            with st.form(f"messenger_form_{selected_receiver}", clear_on_submit=True):
-                col_input, col_send = st.columns([5, 1])
-                with col_input:
-                    dm_input = st.text_input("Nhập tin nhắn...", placeholder=f"Nhắn gì đó cho {rec_dname}...", label_visibility="collapsed", key="messenger_input_box")
-                with col_send:
-                    dm_send = st.form_submit_button("Gửi ➔", use_container_width=True, type="primary")
-
-                if dm_send and dm_input.strip():
-                    try:
-                        supabase.table("private_messages").insert({
-                            "sender": u_id,
-                            "receiver": selected_receiver,
-                            "message": dm_input.strip(),
-                            "avatar_url": avatar_url,
-                        }).execute()
-                        st.rerun()
-                    except Exception as exc:
-                        st.error(f"❌ Không gửi được: {safe_error_message(exc)}")
+                    st.error(f"❌ Không gửi được: {safe_error_message(exc)}")
