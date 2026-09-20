@@ -38,8 +38,9 @@ MAX_WEB_RESULTS = int(st.secrets.get("MAX_WEB_RESULTS", 3))
 MAX_PAGE_TEXT = int(st.secrets.get("MAX_PAGE_TEXT", 2500))
 
 DEFAULT_AVATAR = "https://www.w3schools.com/howto/img_avatar.png"
-# Link ảnh Phượng Hoàng Lửa trực tiếp (đã kiểm tra hiển thị ổn định)
-AI_AVATAR_URL = "https://images2.alphacoders.com/520/thumb-1920-520625.jpg"
+
+# Link ảnh Phượng Hoàng Lửa trực tiếp (Link Wikimedia Commons không bao giờ bị chặn/gãy)
+AI_AVATAR_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Phoenix_logo.svg/512px-Phoenix_logo.svg.png"
 
 # ============================================================
 # GIAO DIỆN & NÂNG CẤP ĐỒ HỌA (ADVANCED UI/UX & AVATAR FIT)
