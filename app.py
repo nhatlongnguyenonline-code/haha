@@ -36,6 +36,8 @@ SESSION_DAYS = int(st.secrets.get("SESSION_DAYS", 30))
 MAX_WEB_RESULTS = int(st.secrets.get("MAX_WEB_RESULTS", 3))
 MAX_PAGE_TEXT = int(st.secrets.get("MAX_PAGE_TEXT", 2500))
 
+DEFAULT_AVATAR = "https://www.w3schools.com/howto/img_avatar.png"
+
 # ============================================================
 # GIAO DIỆN & NÂNG CẤP ĐỒ HỌA (ADVANCED UI/UX)
 # ============================================================
@@ -172,6 +174,9 @@ st.markdown(
         padding: 16px 20px;
         margin-bottom: 12px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
     }
     .social-user {
         font-weight: 700;
@@ -181,7 +186,29 @@ st.markdown(
     .social-time {
         font-size: 0.75rem;
         color: #94A3B8;
-        float: right;
+        margin-left: auto;
+    }
+    .user-avatar-img {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #3B82F6;
+    }
+
+    /* Sidebar Profile Card */
+    .profile-card {
+        text-align: center;
+        padding: 10px 0;
+    }
+    .profile-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #3B82F6;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        margin-bottom: 8px;
     }
 
     /* Ẩn bớt hiệu ứng thừa của Streamlit */
@@ -377,6 +404,7 @@ if logged_in_user is None:
                             "username": reg_user,
                             "password": hashed_p,
                             "display_name": reg_user,
+                            "avatar_url": DEFAULT_AVATAR
                         }).execute()
                         st.success("✅ Đăng ký thành công! Hãy đăng nhập.")
                 except Exception as exc:
@@ -451,28 +479,61 @@ if current_page not in st.session_state[pages_key]:
     st.session_state[active_page_key] = current_page
 
 # ============================================================
-# USER INFO
+# USER INFO & AVATAR
 # ============================================================
+display_name = u_id
+avatar_url = DEFAULT_AVATAR
+
 try:
     user_info_res = (
         supabase.table("users")
-        .select("display_name")
+        .select("display_name, avatar_url")
         .eq("username", u_id)
         .limit(1)
         .execute()
     )
-    display_name = (
-        user_info_res.data[0].get("display_name") or u_id
-        if user_info_res.data else u_id
-    )
+    if user_info_res.data:
+        data_user = user_info_res.data[0]
+        display_name = data_user.get("display_name") or u_id
+        avatar_url = data_user.get("avatar_url") or DEFAULT_AVATAR
 except Exception:
-    display_name = u_id
+    pass
 
 # ============================================================
-# SIDEBAR
+# SIDEBAR (Bao gồm chức năng Đổi Avatar)
 # ============================================================
 with st.sidebar:
-    st.markdown(f"### 👤 TÀI KHOẢN: **{display_name.upper()}**")
+    st.markdown(
+        f"""
+        <div class="profile-card">
+            <img src="{avatar_url}" class="profile-avatar" />
+            <h3 style="margin: 0; color: #0F172A;">{display_name.upper()}</h3>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Đổi Avatar
+    with st.popover("🖼️ Đổi Avatar"):
+        uploaded_avatar = st.file_uploader("Chọn ảnh từ máy...", type=["jpg", "png", "jpeg", "webp"], key="avatar_file")
+        if uploaded_avatar and st.button("Lưu Avatar Mới", type="primary", use_container_width=True):
+            try:
+                file_bytes = uploaded_avatar.read()
+                file_ext = uploaded_avatar.name.split(".")[-1]
+                file_path = f"{u_id}_{int(time.time())}.{file_ext}"
+
+                # Upload lên Bucket avatars của Supabase
+                supabase.storage.from_("avatars").upload(file_path, file_bytes, {"content-type": uploaded_avatar.type})
+                
+                # Lấy public URL
+                public_avatar_url = supabase.storage.from_("avatars").get_public_url(file_path)
+
+                # Cập nhật DB
+                supabase.table("users").update({"avatar_url": public_avatar_url}).eq("username", u_id).execute()
+                st.success("✅ Cập nhật avatar thành công!")
+                st.rerun()
+            except Exception as exc:
+                st.error(f"❌ Lỗi tải avatar: {safe_error_message(exc)}")
 
     rename_user_key = f"rename_user_mode_{u_id}"
     if rename_user_key not in st.session_state:
@@ -709,13 +770,11 @@ tab_ai, tab_public, tab_community = st.tabs([
 # TAB 1: CHAT VỚI AI
 # ------------------------------------------------------------
 with tab_ai:
-    # Hiển thị lịch sử chat AI
     for message in st.session_state[pages_key][current_page]:
-        avatar = "👤" if message["role"] == "user" else "🐦‍🔥"
-        with st.chat_message(message["role"], avatar=avatar):
+        current_avatar = avatar_url if message["role"] == "user" else "🐦‍🔥"
+        with st.chat_message(message["role"], avatar=current_avatar):
             st.markdown(message["content"])
 
-    # Nút chia sẻ câu trả lời cuối cùng lên Bảng tin cộng đồng
     if st.session_state[pages_key][current_page]:
         hist = st.session_state[pages_key][current_page]
         if len(hist) >= 2 and hist[-1]["role"] == "assistant":
@@ -727,12 +786,12 @@ with tab_ai:
                         "username": display_name,
                         "prompt": last_prompt,
                         "ai_response": last_answer,
+                        "avatar_url": avatar_url,
                     }).execute()
                     st.success("🎉 Đã chia sẻ thành công lên Bảng Tin Prompt!")
                 except Exception as exc:
                     st.error(f"❌ Lỗi chia sẻ: {safe_error_message(exc)}")
 
-    # Nhập câu hỏi mới cho AI
     if user_input := st.chat_input("Nhập câu hỏi hoặc yêu cầu phân tích ảnh tại đây..."):
         user_input = user_input.strip()
         if not user_input:
@@ -741,10 +800,9 @@ with tab_ai:
         current_history = st.session_state[pages_key][current_page]
         current_history.append({"role": "user", "content": user_input})
 
-        with st.chat_message("user", avatar="👤"):
+        with st.chat_message("user", avatar=avatar_url):
             st.markdown(user_input)
 
-        # Cache Semantic
         cache_hit = False
         cached_answer = ""
 
@@ -771,7 +829,6 @@ with tab_ai:
             upload_single_page_supabase(u_id, current_page, current_history)
             st.stop()
 
-        # Web Context
         cau_hoi_clean = user_input.lower()
         keywords = [
             "ở đâu", "thành phố", "giá", "thời tiết", "mấy độ", "bao nhiêu",
@@ -813,7 +870,6 @@ with tab_ai:
         else:
             prompt_payload = user_input
 
-        # Gemini Response
         with st.chat_message("assistant", avatar="🐦‍🔥"):
             try:
                 config = types.GenerateContentConfig(
@@ -882,15 +938,14 @@ with tab_ai:
                     current_history.pop()
 
 # ------------------------------------------------------------
-# TAB 2: CHAT CỘNG ĐỒNG (Global Lounge) - AUTO REFRESH 3S
+# TAB 2: CHAT CỘNG ĐỒNG (Global Lounge) - TỰ ĐỘNG CẬP NHẬT MỖI 3S
 # ------------------------------------------------------------
 with tab_public:
     st.caption("💬 Khung chat chung giữa tất cả các thành viên (Tự động cập nhật mỗi 3 giây).")
 
-    # Tự động cập nhật tin nhắn mới mỗi 3000ms (3 giây)
+    # Tự động cập nhật ngầm sau mỗi 3 giây
     st_autorefresh(interval=3000, key="public_chat_refresh")
 
-    # Form gửi tin nhắn cộng đồng
     with st.form("public_chat_form", clear_on_submit=True):
         pub_msg = st.text_input("Viết tin nhắn gửi tới mọi người...", key="pub_input")
         send_btn = st.form_submit_button("🚀 Gửi Tin Nhắn", type="primary")
@@ -899,6 +954,7 @@ with tab_public:
                 supabase.table("public_messages").insert({
                     "username": display_name,
                     "message": pub_msg.strip(),
+                    "avatar_url": avatar_url,
                 }).execute()
                 st.rerun()
             except Exception as exc:
@@ -906,7 +962,6 @@ with tab_public:
 
     st.markdown("---")
     
-    # Tải danh sách 30 tin nhắn mới nhất
     try:
         res_pub = (
             supabase.table("public_messages")
@@ -922,12 +977,16 @@ with tab_public:
         else:
             for item in messages_list:
                 time_str = item.get("created_at", "")[:16].replace("T", " ")
+                item_avatar = item.get("avatar_url") or DEFAULT_AVATAR
                 st.markdown(
                     f"""
                     <div class="social-card">
-                        <span class="social-user">👤 {item.get('username')}</span>
-                        <span class="social-time">🕒 {time_str}</span>
-                        <div style="margin-top: 6px; color: #334155;">{item.get('message')}</div>
+                        <img src="{item_avatar}" class="user-avatar-img" />
+                        <div style="flex-grow: 1;">
+                            <span class="social-user">{item.get('username')}</span>
+                            <span class="social-time">🕒 {time_str}</span>
+                            <div style="margin-top: 4px; color: #334155;">{item.get('message')}</div>
+                        </div>
                     </div>
                     """,
                     unsafe_allow_html=True,
