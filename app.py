@@ -239,7 +239,7 @@ if cache_key not in st.session_state:
 current_page = st.session_state[active_page_key]
 
 user_info_res = supabase.table("users").select("display_name").eq("username", u_id).execute()
-display_name = user_info_res.data[0]["display_name"] if user_info_res.data and len(user_info_res.data) > 0 else u_id
+display_name = user_info_res.data[0]["display_name"] if user_info_res.data else u_id
 with st.sidebar:
     st.markdown(f"### 👤 TÀI KHOẢN: **{display_name.upper()}**")
     if f"rename_user_mode_{u_id}" not in st.session_state:
@@ -402,8 +402,8 @@ if user_input := st.chat_input("Nhập câu hỏi, yêu cầu phân tích ảnh 
                     safe_prompt = urllib.parse.quote(english_prompt)
                     random_seed = secrets.randbelow(999999)
                     
-                    # Định tuyến cấu hình link URL chuẩn xác theo quy định API Pollinations
-                    img_url = f"https://pollinations.ai{safe_prompt}?width=1024&height=1024&nologo=true&private=true&seed={random_seed}"
+                    # SỬA LỖI ĐƯỜNG DẪN: Bổ sung ký tự dấu gạch chéo chuẩn "/" sau biến nội dung prompt giúp cổng API kết nối tệp tin chính xác
+                    img_url = f"https://pollinations.ai{safe_prompt}/?width=1024&height=1024&nologo=true&private=true&seed={random_seed}"
                     
                     html_code = f"""
                     <div style="display: flex; justify-content: center; margin: 10px 0;">
