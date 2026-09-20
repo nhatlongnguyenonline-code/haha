@@ -38,8 +38,6 @@ MAX_WEB_RESULTS = int(st.secrets.get("MAX_WEB_RESULTS", 3))
 MAX_PAGE_TEXT = int(st.secrets.get("MAX_PAGE_TEXT", 2500))
 
 DEFAULT_AVATAR = "https://www.w3schools.com/howto/img_avatar.png"
-
-# Sử dụng Emoji trực tiếp làm Avatar AI để loại bỏ hoàn toàn lỗi vỡ ảnh của trình duyệt
 AI_AVATAR_EMOJI = "🐦‍🔥"
 
 # ============================================================
@@ -48,39 +46,30 @@ AI_AVATAR_EMOJI = "🐦‍🔥"
 st.markdown(
     """
     <style>
-    /* CSS Nền chung */
     .main {
         background-color: #FAFAFA !important;
     }
-
-    /* Sidebar thiết kế phong cách Glassmorphism */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%) !important;
         border-right: 1px solid #E2E8F0 !important;
         box-shadow: 4px 0 15px rgba(0, 0, 0, 0.02) !important;
     }
-
-    /* Tùy chỉnh Bong Bóng Chat */
     [data-testid="stChatMessage"] {
         border-radius: 20px !important;
         margin-bottom: 18px !important;
         padding: 18px 22px !important;
         transition: all 0.2s ease-in-out !important;
     }
-    
     [data-testid="stChatMessageAssistant"] {
         background: #FFFFFF !important;
         border: 1px solid #E2E8F0 !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
     }
-
     [data-testid="stChatMessageUser"] {
         background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%) !important;
         border: 1px solid #BFDBFE !important;
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.05) !important;
     }
-
-    /* Avatar Chatbot & Người dùng trong khung chat AI */
     [data-testid="stChatMessageAvatar"] {
         border-radius: 50% !important;
         border: 2px solid #F59E0B !important;
@@ -91,8 +80,6 @@ st.markdown(
         font-size: 1.2rem;
         background: #FFFBEB;
     }
-
-    /* Thanh Nhập Tin Nhắn Nổi */
     .stChatInput {
         position: fixed !important;
         bottom: 25px !important;
@@ -102,7 +89,6 @@ st.markdown(
         width: 100% !important;
         max-width: 650px !important;
     }
-
     .stChatInput [data-testid="stChatInputCurrentContainer"] {
         border: 2px solid #3B82F6 !important;
         border-radius: 28px !important;
@@ -111,19 +97,15 @@ st.markdown(
         box-shadow: 0 12px 35px rgba(59, 130, 246, 0.18) !important;
         transition: all 0.3s ease !important;
     }
-
     .stChatInput [data-testid="stChatInputCurrentContainer"]:focus-within {
         box-shadow: 0 12px 40px rgba(59, 130, 246, 0.35) !important;
         border-color: #2563EB !important;
     }
-
     .stChatInput textarea {
         color: #0F172A !important;
         font-size: 0.98rem !important;
         font-weight: 500 !important;
     }
-
-    /* Tiêu Đề Nổi Bật */
     .premium-title-container {
         display: flex;
         align-items: center;
@@ -151,8 +133,6 @@ st.markdown(
         font-weight: 500;
         margin-bottom: 1.5rem;
     }
-
-    /* Nút Bấm Đẹp Mắt */
     .stButton button {
         border-radius: 12px !important;
         font-weight: 600 !important;
@@ -162,8 +142,6 @@ st.markdown(
         transform: translateY(-2px) !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
     }
-
-    /* Khung Đăng Nhập & Social Card */
     .login-box {
         padding: 28px;
         border-radius: 20px;
@@ -176,8 +154,8 @@ st.markdown(
         background: #FFFFFF;
         border: 1px solid #E2E8F0;
         border-radius: 16px;
-        padding: 16px 20px;
-        margin-bottom: 12px;
+        padding: 14px 18px;
+        margin-bottom: 10px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.02);
         display: flex;
         gap: 12px;
@@ -193,7 +171,6 @@ st.markdown(
         color: #94A3B8;
         margin-left: auto;
     }
-    
     .user-avatar-img {
         width: 44px;
         height: 44px;
@@ -203,7 +180,6 @@ st.markdown(
         border: 2px solid #3B82F6;
         flex-shrink: 0;
     }
-
     .profile-card {
         text-align: center;
         padding: 10px 0;
@@ -219,7 +195,6 @@ st.markdown(
         margin: 0 auto 10px auto;
         display: block;
     }
-
     [data-testid="stHeaderHeading"] svg,
     [data-testid="stElementContainer"] h1 svg {
         display: none !important;
@@ -240,7 +215,6 @@ def safe_error_message(exc):
             text = text.replace(str(secret_value), "[REDACTED]")
     return text[:500]
 
-
 def normalize_history(value):
     if not isinstance(value, list):
         return []
@@ -253,7 +227,6 @@ def normalize_history(value):
         if role in ("user", "assistant") and isinstance(content, str):
             cleaned.append({"role": role, "content": content})
     return cleaned
-
 
 def next_page_name(pages):
     index = 1
@@ -300,7 +273,6 @@ def get_embedding(text):
     except Exception:
         return None
 
-
 def cosine_similarity(a, b):
     try:
         a = np.asarray(a, dtype=np.float32)
@@ -326,9 +298,6 @@ logged_in_user = None
 if url_token:
     logged_in_user = st.session_state.global_token_registry.get(url_token)
 
-# ============================================================
-# ĐĂNG NHẬP / ĐĂNG KÝ
-# ============================================================
 if logged_in_user is None:
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
     tab1, tab2 = st.tabs(["🔒 Đăng Nhập", "📝 Đăng Ký Tài Khoản"])
@@ -423,10 +392,11 @@ u_id = logged_in_user
 pages_key = f"chat_pages_{u_id}"
 active_page_key = f"active_page_{u_id}"
 cache_key = f"cache_{u_id}"
+hidden_public_msgs_key = f"hidden_public_msgs_{u_id}"
 
-# ============================================================
-# SUPABASE CHAT HELPERS
-# ============================================================
+if hidden_public_msgs_key not in st.session_state:
+    st.session_state[hidden_public_msgs_key] = set()
+
 def download_supabase_history(username):
     pages = {}
     try:
@@ -444,7 +414,6 @@ def download_supabase_history(username):
         st.error(f"❌ Không tải được lịch sử chat: {safe_error_message(exc)}")
     return pages
 
-
 def upload_single_page_supabase(username, page_name, data_list):
     try:
         supabase.table("chat_histories").upsert(
@@ -460,9 +429,6 @@ def upload_single_page_supabase(username, page_name, data_list):
         st.error(f"❌ Không lưu được lịch sử: {safe_error_message(exc)}")
         return False
 
-# ============================================================
-# LOAD CHAT PAGES
-# ============================================================
 if pages_key not in st.session_state:
     db_pages = download_supabase_history(u_id)
     if not db_pages:
@@ -481,9 +447,6 @@ if current_page not in st.session_state[pages_key]:
     current_page = list(st.session_state[pages_key].keys())[-1]
     st.session_state[active_page_key] = current_page
 
-# ============================================================
-# USER INFO & AVATAR
-# ============================================================
 display_name = u_id
 avatar_url = DEFAULT_AVATAR
 
@@ -582,7 +545,7 @@ with st.sidebar:
             st.session_state.global_token_registry.pop(token, None)
         st.query_params.clear()
         for key in list(st.session_state.keys()):
-            if key.startswith(("chat_pages_", "active_page_", "cache_", "ai_session_", "rename_")):
+            if key.startswith(("chat_pages_", "active_page_", "cache_", "ai_session_", "rename_", "hidden_public_msgs_")):
                 del st.session_state[key]
         st.rerun()
 
@@ -713,7 +676,6 @@ except ImportError:
     except ImportError:
         DDGS = None
 
-
 def search_the_web_ddg(query, max_results=MAX_WEB_RESULTS):
     if DDGS is None:
         return []
@@ -728,7 +690,6 @@ def search_the_web_ddg(query, max_results=MAX_WEB_RESULTS):
     except Exception:
         return []
     return urls
-
 
 def extract_web_content(url):
     try:
@@ -955,9 +916,16 @@ with tab_ai:
 # TAB 2: CHAT CỘNG ĐỒNG
 # ------------------------------------------------------------
 with tab_public:
-    st.caption("💬 Khung chat chung giữa tất cả các thành viên (Tự động cập nhật mỗi 3 giây).")
+    st.caption("💬 Khung chat chung (Tự động xóa tin nhắn sau 1 tiếng; Tin nhắn tự động làm mới mỗi 3 giây).")
 
     st_autorefresh(interval=3000, key="public_chat_refresh")
+
+    # 1. Tự động dọn dẹp các tin nhắn cũ hơn 1 tiếng trên Database
+    try:
+        one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        supabase.table("public_messages").delete().lt("created_at", one_hour_ago).execute()
+    except Exception:
+        pass
 
     with st.form("public_chat_form", clear_on_submit=True):
         pub_msg = st.text_input("Viết tin nhắn gửi tới mọi người...", key="pub_input")
@@ -973,6 +941,18 @@ with tab_public:
             except Exception as exc:
                 st.error(f"❌ Không gửi được tin nhắn: {safe_error_message(exc)}")
 
+    # Nút xóa toàn bộ cuộc trò chuyện (chỉ riêng bên người dùng này nhìn thấy)
+    if st.button("🗑️ Xóa toàn bộ cuộc trò chuyện của tôi", type="secondary"):
+        try:
+            res_all = supabase.table("public_messages").select("id").execute()
+            if res_all.data:
+                for msg_item in res_all.data:
+                    st.session_state[hidden_public_msgs_key].add(msg_item.get("id"))
+            st.success("✅ Đã xóa sạch lịch sử chat phía giao diện của bạn.")
+            st.rerun()
+        except Exception as exc:
+            st.error(f"❌ Không thể thực hiện: {safe_error_message(exc)}")
+
     st.markdown("---")
     
     try:
@@ -980,30 +960,57 @@ with tab_public:
             supabase.table("public_messages")
             .select("*")
             .order("id", desc=True)
-            .limit(30)
+            .limit(40)
             .execute()
         )
         messages_list = res_pub.data or []
         
-        if not messages_list:
-            st.info("Chưa có tin nhắn nào. Hãy là người đầu tiên trò chuyện!")
+        # Lọc bỏ các tin nhắn mà user này đã ẩn/xóa cục bộ
+        visible_messages = [
+            m for m in messages_list 
+            if m.get("id") not in st.session_state[hidden_public_msgs_key]
+        ]
+
+        if not visible_messages:
+            st.info("Chưa có tin nhắn nào hoặc bạn đã xóa toàn bộ hiển thị.")
         else:
-            for item in messages_list:
+            for item in visible_messages:
+                msg_id = item.get("id")
+                msg_user = item.get("username")
                 time_str = item.get("created_at", "")[:16].replace("T", " ")
                 item_avatar = item.get("avatar_url") or DEFAULT_AVATAR
-                st.markdown(
-                    f"""
-                    <div class="social-card">
-                        <img src="{item_avatar}" class="user-avatar-img" />
-                        <div style="flex-grow: 1;">
-                            <span class="social-user">{item.get('username')}</span>
-                            <span class="social-time">🕒 {time_str}</span>
-                            <div style="margin-top: 4px; color: #334155;">{item.get('message')}</div>
+                msg_text = item.get("message")
+
+                col_msg, col_action = st.columns([6, 1])
+                with col_msg:
+                    st.markdown(
+                        f"""
+                        <div class="social-card" style="margin-bottom: 2px;">
+                            <img src="{item_avatar}" class="user-avatar-img" />
+                            <div style="flex-grow: 1;">
+                                <span class="social-user">{msg_user}</span>
+                                <span class="social-time">🕒 {time_str}</span>
+                                <div style="margin-top: 4px; color: #334155;">{msg_text}</div>
+                            </div>
                         </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                with col_action:
+                    # Nếu là tin nhắn của chính user này, hiển thị nút Thu hồi (xóa vĩnh viễn trên Server để mọi người đều mất)
+                    if msg_user == display_name:
+                        if st.button("Thu hồi", key=f"revoke_{msg_id}", help="Thu hồi tin nhắn này với mọi người"):
+                            try:
+                                supabase.table("public_messages").delete().eq("id", msg_id).execute()
+                                st.rerun()
+                            except Exception as exc:
+                                st.error(f"Lỗi: {safe_error_message(exc)}")
+                    else:
+                        # Nút xóa riêng phía người này nếu muốn ẩn đi
+                        if st.button("Ẩn", key=f"hide_{msg_id}", help="Ẩn tin nhắn này ở màn hình của bạn"):
+                            st.session_state[hidden_public_msgs_key].add(msg_id)
+                            st.rerun()
+
     except Exception as exc:
         st.error(f"❌ Lỗi tải tin nhắn cộng đồng: {safe_error_message(exc)}")
 
