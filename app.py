@@ -1074,9 +1074,6 @@ with tab_dm:
             selected_dname = sb.selectbox("Chọn bạn bè để trò chuyện:", list(friend_options.keys()), key="select_friend_chat")
             selected_receiver = friend_options[selected_dname]
 
-            if sb.button("🔄 Làm mới khung chat riêng"):
-                sb.rerun()
-
             sb.markdown("---")
 
             receiver_info = next((u for u in other_users if u["username"] == selected_receiver), {"display_name": selected_receiver, "avatar_url": DEFAULT_AVATAR})
@@ -1146,18 +1143,24 @@ with tab_dm:
                 except Exception as exc:
                     sb.error(f"❌ Lỗi tải tin nhắn: {safe_error_message(exc)}")
 
-            # Sử dụng st.form với clear_on_submit=True để tự động xóa ô nhập liệu khi gửi thành công, chống spam khi lag
+            # Form nhập tin nhắn kết hợp nút Làm mới & nút Gửi chống spam
             with sb.form(key=f"dm_form_{selected_receiver}", clear_on_submit=True):
-                col_input, col_send = sb.columns([5, 1])
+                col_input, col_refresh, col_send = sb.columns([4, 1, 1])
                 with col_input:
                     dm_input = sb.text_input(
                         "Nhập tin nhắn...", 
                         placeholder=f"Nhắn gì đó cho {rec_dname}...", 
                         label_visibility="collapsed"
                     )
+                with col_refresh:
+                    sb.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
+                    refresh_btn = sb.form_submit_button("🔄 Tải lại", use_container_width=True)
                 with col_send:
                     sb.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
                     dm_send_btn = sb.form_submit_button("Gửi ➔", use_container_width=True, type="primary")
+
+                if refresh_btn:
+                    sb.rerun()
 
                 if dm_send_btn and dm_input and dm_input.strip():
                     try:
